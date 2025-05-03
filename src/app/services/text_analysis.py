@@ -1,12 +1,12 @@
 from typing import List
-import openai
+from openai import AsyncOpenAI
 from ..core.config import settings
 
 # Configure OpenAI
-openai.api_key = settings.OPENAI_API_KEY
+client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
 async def generate_summary(text: str) -> str:
-    response = await openai.responses.create(
+    response = await client.responses.create(
         model="gpt-4.1",
         instructions="Analyze the text, provide a title or identify the pragmatic, and summarize it. Return a max of 30 words",
         input=text
@@ -14,14 +14,14 @@ async def generate_summary(text: str) -> str:
     return response.output_text
 
 async def find_most_similar(query: str, texts: List[str]) -> tuple[str, float]:
-    query_embedding = await openai.Embedding.acreate(
-        model="text-embedding-ada-002",
+    query_embedding = await client.embeddings.create(
+        model="text-embedding-3-small",
         input=query
     )
     query_vector = query_embedding.data[0].embedding
 
-    texts_embeddings = await openai.Embedding.acreate(
-        model="text-embedding-ada-002",
+    texts_embeddings = await client.embeddings.create(
+        model="text-embedding-3-small",
         input=texts
     )
     
