@@ -6,14 +6,12 @@ from ..core.config import settings
 openai.api_key = settings.OPENAI_API_KEY
 
 async def generate_summary(text: str) -> str:
-    response = await openai.ChatCompletion.acreate(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "Summarize the following text in approximately 30 words:"},
-            {"role": "user", "content": text}
-        ]
+    response = await openai.responses.create(
+        model="gpt-4.1",
+        instructions="Analyze the text, provide a title or identify the pragmatic, and summarize it. Return a max of 30 words",
+        input=text
     )
-    return response.choices[0].message.content.strip()
+    return response.output_text
 
 async def find_most_similar(query: str, texts: List[str]) -> tuple[str, float]:
     query_embedding = await openai.Embedding.acreate(
