@@ -6,6 +6,9 @@
     - [Sequence Diagram](#sequence-diagram)
   - [Chunking](#chunking)
   - [Summarization](#summarization)
+  - [Prompting Strategy](#prompting-strategy)
+    - [Proposed Prompting Possibilities](#proposed-prompting-possibilities)
+  - [Diagram Prompting Logic](#diagram-prompting-logic)
 
 
 ## AI Micro-Service Architecture
@@ -162,4 +165,93 @@ Is it worth pre-processing text while GPT-4.1 has a context window of 1M Tokens?
 
 It's an edge case to consider a set of documents that has over 1M tokens in context while being consistently unstructured, that needs structuring and abstraction.
 
-This boils down to the system prompting strategy.
+This boils down to the system **prompting strategy**.
+
+## Prompting Strategy
+
+### Proposed Prompting Possibilities
+
+Here are different ways to implement adaptive strategy through prompting:
+
+1.  **Tiered Base Prompts:**
+    * **Concept:** Create distinct base prompts for different input length categories.
+    * **Example (Short Text):** `Summarize the following paragraph in [target_length] words, focusing on its single main point: [Text]`
+    * **Example (Medium Text):** `Provide a [target_length] word summary of this article. Identify the main argument and key supporting points: [Text]`
+    * **Example (Long Text):** `Summarize this paper in [target_length] words. Include the main thesis, the overall structure of the argument, key findings, and any significant nuances or conclusions: [Text]`
+    * **Pros:**
+        * Simple to implement.
+    * **Cons:**
+        * Less flexible; requires classifying text length accurately beforehand.
+
+2.  **Parameter-Driven Meta-Prompt:**
+    * **Concept:** Use one flexible prompt incorporating parameters that guide the AI.
+    * **Example:** `You are an expert summarizer. Analyze the provided text (estimated length category: [Short/Medium/Long]). Produce a summary of exactly [target_length] words. Based on the text length, adjust your focus: for short texts, capture the core assertion; for medium texts, outline the main argument and support; for long texts, synthesize the thesis, structure, key findings, and relevant nuance. Text: [Text]`
+    * **Pros:**
+        * Highly flexible; allows AI to internalize the adaptation logic.
+    * **Cons:**
+        * Relies heavily on the AI's ability to interpret and follow complex instructions.
+
+3.  **Chain-of-Thought / Step-by-Step Prompting:**
+    * **Concept:** Guide the AI through the analysis process explicitly, especially for longer texts.
+    * **Example (Long Text):**
+        1.  `First, identify the primary thesis or main argument of this paper: [Text]`
+        2.  `Next, briefly outline the main sections or structure used to support the thesis.`
+        3.  `What are the most critical findings or conclusions presented?`
+        4.  `Are there any significant nuances, limitations, or counter-arguments mentioned that are essential for understanding the author's position?`
+        5.  `Based on the above points, synthesize a coherent summary of [target_length] words.`
+    * **Pros:**
+        * More controllable; makes the AI's reasoning process transparent.
+    * **Cons:**
+        * More interactive; potentially slower; requires multiple prompts.
+
+4.  **Role-Playing with Context:**
+    * **Concept:** Assign a role that implies the required level of detail and focus.
+    * **Example (Short Summary of Long Text):** `Act as a journalist writing a news brief headline (approx. 30 words) summarizing the core finding of this research paper: [Text]`
+    * **Example (Detailed Summary of Long Text):** `Act as a PhD student writing an abstract (approx. 150 words) for this paper, covering the background, methods, results, and conclusion: [Text]`
+    * **Pros:**
+        * Leverages the AI's world knowledge and role-playing capabilities.
+    * **Cons:**
+        * Output style might be influenced by the role; relies on the AI understanding the implications of the role for summarization depth.
+
+5.  **Focus Prioritization Prompt:**
+    * **Concept:** Explicitly tell the AI how to prioritize different elements based on the goal.
+    * **Example:** `Summarize the following text in [target_length] words. Prioritize these elements in order: 1. Core Topic/Thesis, 2. Main Findings/Conclusion, 3. Key Supporting Arguments/Methodology, 4. Structural Overview, 5. Nuance/Context. Include elements only if space permits within the word limit, following the priority order. Text: [Text]`
+    * **Pros:**
+        * Gives fine-grained control over what gets included or excluded based on brevity constraints.
+    * **Cons:**
+        * Can be complex to formulate the priority list correctly for every scenario.
+
+Since the use case is unpredictable, tiered-based prompting is most effective, as we can pre-process and analyze the text before getting a response from OpenAI. It is also the most generalistic approach, and doesn't leave out further possible changes to also include context, prioritization, CoT, or paramater driven prompts within Tiered-based prompting.
+ 
+## Diagram Prompting Logic
+
+A general approach of tiered based prompting can be approached like this:
+
+```mermaid
+graph TD
+    A[Input Text] --> B{Analyze Text: Length & Complexity};
+    C[Define Output: Target Length & Focus] --> B;
+
+    B -- "|Short Text (<200w)|" --> D[Strategy: Focus on Core Assertion / Main Point];
+    B -- "|Medium Text (200-1500w)|" --> E[Strategy: Focus on Argument, Support, Structure];
+    B -- "|Long Text (>1500w)|" --> F[Strategy: Focus on Thesis, Structure, Findings, Nuance, Pragmatics];
+
+    D --> G{Identify Key Elements};
+    E --> G;
+    F --> G;
+
+    G --> H{Prioritize Elements based on Strategy & Target Length};
+    H --> I[Synthesize Draft Summary];
+    I --> J{Refine & Edit to Target Length};
+    J --> K[Output Final Summary];
+
+    %% Styling (Optional)
+    classDef default fill:#f9f9f9,stroke:#333,stroke-width:2px,color:#000;
+    classDef decision fill:#ccf,stroke:#333,stroke-width:2px;
+    classDef strategy fill:#fcf,stroke:#333,stroke-width:2px;
+    classDef output fill:#cfc,stroke:#333,stroke-width:2px;
+
+    class B,G,H,J decision;
+    class D,E,F strategy;
+    class K output;
+```

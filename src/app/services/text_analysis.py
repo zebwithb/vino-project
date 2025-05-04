@@ -88,29 +88,78 @@ async def get_embeddings(texts: Union[str, List[str]], model: str = "text-embedd
         raise  # Re-raise the exception to be handled upstream
 
 async def generate_summary(text: str, max_words: int = 30) -> str:
+    """
+    Generates a summary of the text, adapting the prompting strategy based on text length.
+
+    Args:
+        text: The input text.
+        max_words: The approximate target word count for the summary.
+
+    Returns:
+        The generated summary string.
+
+    Raises:
+        Exception: If the OpenAI API call fails or other errors occur.
+    """
     try:
         # --- Preprocessing ---
-        # Normalize whitespace: replace multiple spaces/newlines/tabs with a single space
         processed_text = re.sub(r'\s+', ' ', text).strip()
-        # Optional: Add more cleaning steps here if needed
-        # ---------------------
+        original_length = len(text)
+        processed_length = len(processed_text)
+        word_count = len(processed_text.split()) # Estimate word count
 
-        logger.info("Generating summary for text.", original_length=len(text), processed_length=len(processed_text))
+        logger.info(
+            "Generating summary for text.",
+            original_length=original_length,
+            processed_length=processed_length,
+            estimated_words=word_count,
+            target_max_words=max_words
+        )
+
         if not processed_text:
              logger.warning("Input text became empty after processing.")
-             return "" 
+             return ""
+
+        # --- Tiered Prompting Strategy ---
+        system_prompt = ""
+        if word_count < 200:
+            # Short Text Strategy
+            strategy = "Short Text (<200w): Focus on Core Assertion / Main Point"
+            system_prompt = (
+                f"You are a concise summarizer. Summarize the following text in approximately {max_words} words. "
+                f"Focus strictly on identifying and stating the single core assertion or main point."
+            )
+        elif word_count <= 1500:
+            # Medium Text Strategy
+            strategy = "Medium Text (200-1500w): Focus on Argument, Support, Structure"
+            system_prompt = (
+                f"You are an analytical summarizer. Summarize the following text in approximately {max_words} words. "
+                f"Identify the main argument, key supporting points, and briefly touch upon the overall structure."
+            )
+        else:
+            # Long Text Strategy
+            strategy = "Long Text (>1500w): Focus on Thesis, Structure, Findings, Nuance, Pragmatics"
+            system_prompt = (
+                f"You are a comprehensive summarizer. Summarize the following text in approximately {max_words} words. "
+                f"Synthesize the main thesis, outline the argument structure, highlight key findings, "
+                f"and include any significant nuances or pragmatic implications mentioned."
+            )
+
+        logger.info(f"Selected prompting strategy: {strategy}")
+        # ---------------------------------
 
         response = await client.chat.completions.create(
-            model="gpt-4.1",
+            model="gpt-4.1", # Consider if different models suit different lengths
             messages=[
-                {"role": "system", "content": f"Summarize the following text in approximately {max_words} words. Identify the main topic or provide a concise title as part of the summary."},
-                {"role": "user", "content": processed_text} # Use processed text
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": processed_text}
             ],
-            max_tokens=max_words + 20,
-            temperature=0.5,
+            # Adjust max_tokens based on max_words, adding buffer for instructions/variation
+            max_tokens=max_words + 30, # Increased buffer slightly
+            temperature=0.5, # Adjust temperature based on desired creativity vs factuality
         )
         summary = response.choices[0].message.content.strip()
-        logger.info("Summary generated successfully.", summary_length=len(summary))
+        logger.info("Summary generated successfully.", summary_length=len(summary), summary_words=len(summary.split()))
         return summary
     except Exception as e:
         logger.exception("Error during summarization.")
