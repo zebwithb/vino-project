@@ -5,8 +5,6 @@ on: [push, pull_request]
 jobs:
   build-test:
     runs-on: ubuntu-latest
-    env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -18,8 +16,12 @@ jobs:
           echo "~/.cargo/bin" >> $GITHUB_PATH
       - name: Install dependencies
         run: |
-          uv sync 
-          uv pip install pytest ruff
+          uv sync
+          # Ensure python-dotenv is installed if not in requirements.txt/pyproject.toml
+          uv pip install pytest ruff python-dotenv
+      - name: Create .env file
+        run: |
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" > .env
       - name: Lint
         run: |
           uv run ruff check --fix
@@ -27,6 +29,7 @@ jobs:
       - name: Test
         run: |
           export PYTHONPATH=$PYTHONPATH:$(pwd)/src
+          # The load_dotenv() in your config.py should now pick up the key from .env
           uv run pytest
       - name: Build Docker image
         run: docker build -t flowlined-zeb .
