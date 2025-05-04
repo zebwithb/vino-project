@@ -160,6 +160,6 @@ There exists an overlap in chunking strategies, embeddings and summary. Chunking
 
 Is it worth pre-processing text while GPT-4.1 has a context window of 1M Tokens? This heavily depends on the use case.
 
-It's an edge case to consider a set of documents that has over 1M tokens in context while being consistently unstructured, needs structuring and abstraction.
+It's an edge case to consider a set of documents that has over 1M tokens in context while being consistently unstructured, that needs structuring and abstraction.
 
 This boils down to the system prompting strategy.
