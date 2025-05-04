@@ -20,8 +20,8 @@ jobs:
           uv pip install pytest ruff
       - name: Lint
         run: |
-          uv run ruff check --select UP035 --add-noqa
+          uv run ruff check --fix
       - name: Test
-        run: pytest
+        run: uv run pytest
       - name: Build Docker image
         run: docker build -t flowlined-zeb .
