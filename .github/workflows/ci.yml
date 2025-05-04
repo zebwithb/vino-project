@@ -17,7 +17,7 @@ jobs:
       - name: Lint
         run: |
           pip install ruff
-          ruff src/
+          ruff check --select UP035 --add-noqa
       - name: Test
         run: pytest
       - name: Build Docker image

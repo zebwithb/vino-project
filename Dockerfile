@@ -1,28 +1,23 @@
-FROM python:3.11-slim
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 WORKDIR /app
 
-# Install Rust and Cargo (needed if any dependencies require compilation)
-# If no dependencies need Rust, you might remove this section
-RUN apt-get update && apt-get install -y curl build-essential && \
-    curl https://sh.rustup.rs -sSf | sh -s -- -y
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
 
-# Add Cargo to PATH for subsequent RUN commands
-ENV PATH="/root/.cargo/bin:${PATH}"
+# Install dependencies using uv and lockfile for reproducibility
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
-# Install uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.cargo/bin:/root/.local/bin:${PATH}"
-
-COPY requirements.txt .
-
-# Install Python dependencies using uv
-# uv caches by default, so --no-cache-dir is not needed and might interfere
-RUN uv pip install -r requirements.txt --system
-
+# Copy the rest of the application code
 COPY . .
 
-EXPOSE 8000
+# Place executables in the environment at the front of the path
+ENV PATH="/app/.venv/bin:$PATH"
 
-# Update the CMD to point to src.main:app based on previous changes
+# Reset the entrypoint, don't invoke `uv`
+ENTRYPOINT []
+
+# Run the FastAPI application by default
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
