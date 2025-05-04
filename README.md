@@ -76,17 +76,49 @@ Response:
 }
 ```
 
-## Development
+## How to Build, Run, and Test
 
-### Running Tests
-```bash
+### Prerequisites
+
+- Docker and Docker Compose
+- OpenAI API key
+
+### Build & Run
+
+1. Clone the repository.
+2. Create a `.env` file in the root directory with your OpenAI API key:
+   ```
+   OPENAI_API_KEY=your_api_key_here
+   ```
+3. Build and start the service:
+   ```
+   docker-compose up --build
+   ```
+   The API will be available at [http://localhost:8000](http://localhost:8000).
+
+### Testing
+
+To run tests:
+```
 docker-compose run api pytest tests/
 ```
 
 ### API Documentation
-Once the service is running, visit:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+
+- Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
+- ReDoc: [http://localhost:8000/redoc](http://localhost:8000/redoc)
+
+## Architectural Decisions
+
+- **FastAPI** was chosen for its speed, async support, and automatic OpenAPI documentation.
+- **Docker** ensures consistent deployment and easy local development.
+- **OpenAI API** is used for summarization and semantic similarity due to its state-of-the-art language models.
+- **Chunking Strategy:** Recursive character splitting (see `docs/process.md`) is used for text chunking, balancing simplicity and generality.
+- **Prompting Strategy:** Tiered-based prompting is implemented for adaptability and future extensibility (see `docs/process.md` for alternatives considered).
+- **Input validation** is handled with Pydantic models for security and reliability.
+- **Testing** is done with Pytest for simplicity and integration with Docker.
+
+For detailed rationale and diagrams, see [docs/process.md](docs/process.md).
 
 ## Error Handling
 

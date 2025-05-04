@@ -13,6 +13,10 @@ The reason this is important is because of the following:
 * Possibile to optimize computational efficiency
 * Chunking can be seen as pre-processing for various NLP tasks
 
+The notes under  is a distilled version, the full paper: [Optimizing Text Embeddings](https://docs.google.com/document/d/1T_XtskN-5yg83D-QiN566EHD0zQNFHLFbIfMQzsRk6Q/edit?usp=sharing)
+
+I read through and based on the paper made my conclusions further documented in  [Chunking](process.md#chunking).
+
 ## Gemini Deep Research Result
 
 Distilled Guide to Text Chunking for Embeddings1. What is Text Chunking and Why Does It Matter?

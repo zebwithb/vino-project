@@ -132,6 +132,10 @@ graph TD
 
 This decision diagram will help us evaluate which strategy to use for the implementation.
 
+Most likely because of time, fast implementation and most generalistic approach, Recursive Character Splitting provided by LangChain is the most optimal choice.
+
+More complex solutions are only relevant for specific use cases with complex texts.
+
 ## Summarization
 
 When summarizing there are multiple ways to do it, the simplest, is the let an LLM to do it. Though, while retaining a set of "30 words", it becomes hard to measure what the LLM focuses on. Seemingly every LLM wil do it differently, depending on their weights, temperature and under the hood training.
@@ -225,7 +229,7 @@ Since the use case is unpredictable, tiered-based prompting is most effective, a
  
 ## Diagram Prompting Logic
 
-A general approach of tiered based prompting can be approached like this:
+A general approach of tiered based prompting can be done like this:
 
 ```mermaid
 graph TD
@@ -255,3 +259,6 @@ graph TD
     class D,E,F strategy;
     class K output;
 ```
+
+To actually implement every node would depend on which LLM used, though here for the last 5 steps, we rely solely on GPT-4.1's reasoning capabilities based on the system prompt and input.
+
