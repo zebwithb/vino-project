@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 from src.main import app, start_time
+from src.app.services.text_analysis import split_text_recursively
 import time
 import openai
 
@@ -32,6 +33,23 @@ def mock_openai(mocker):
     return mock_chat_create, mock_embedding_create
 
 client = TestClient(app)
+
+# --- Test Text Chunking ---
+
+def test_split_text_recursively_happy_path():
+    """Tests basic recursive splitting happy path."""
+    text = "This is the first sentence. This is the second sentence. This is the third sentence, which is significantly longer to ensure it gets split based on size if necessary."
+    chunk_size = 50
+    chunks = split_text_recursively(text, chunk_size=chunk_size, chunk_overlap=10)
+
+    assert isinstance(chunks, list)
+    assert len(chunks) > 1 # Check that splitting occurred
+    assert all(isinstance(chunk, str) for chunk in chunks)
+    assert chunks[0].startswith("This is the first sentence.")
+    # Basic check that chunks are roughly within the size limit (allowing for overlap and separator respect)
+    assert all(len(chunk) <= chunk_size + 20 for chunk in chunks) # Allow some leeway
+
+# --- Existing API Tests ---
 
 def test_summarize_endpoint_with_mock(mock_openai):
     mock_chat_create, _ = mock_openai

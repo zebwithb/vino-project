@@ -1,23 +1,62 @@
 import sys
-from typing import List, Union  # Added Union
+import re 
+from typing import List, Union 
 from openai import AsyncOpenAI
 from loguru import logger
+from langchain.text_splitter import RecursiveCharacterTextSplitter 
 from ..core.config import settings
 
-# Configure Loguru for JSON output to stdout
 logger.remove()
 logger.add(sys.stdout, serialize=True, enqueue=True)
 
-# Configure OpenAI
 client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
-# --- Reusable Embedding Function ---
+def split_text_recursively(
+    text: str,
+    chunk_size: int = 1000,
+    chunk_overlap: int = 150,
+    separators: List[str] = None
+) -> List[str]:
+    """
+    Splits text recursively using LangChain's RecursiveCharacterTextSplitter.
+
+    Args:
+        text: The text to split.
+        chunk_size: The target size for each chunk (in characters).
+        chunk_overlap: The number of characters to overlap between chunks.
+        separators: Optional list of separators to use. Defaults to ["\n\n", "\n", " ", ""].
+
+    Returns:
+        A list of text chunks.
+    """
+    if separators is None:
+        separators = ["\n\n", "\n", " ", ""]
+
+    logger.info(f"Splitting text recursively. Chunk size: {chunk_size}, Overlap: {chunk_overlap}")
+
+    try:
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            length_function=len,
+            is_separator_regex=False,
+            separators=separators,
+        )
+        chunks = text_splitter.split_text(text)
+        logger.info(f"Text split into {len(chunks)} chunks.")
+        return chunks
+    except Exception as e:
+        logger.exception("Error during recursive text splitting.")
+        # Depending on requirements, you might return [] or re-raise
+        return []
+
 async def get_embeddings(texts: Union[str, List[str]], model: str = "text-embedding-3-small") -> Union[List[float], List[List[float]]]:
     """
     Generates embeddings for a single text or a list of texts.
 
     Args:
         texts: A single string or a list of strings to embed.
+                 If providing chunks, pass the list of chunk strings.
         model: The embedding model to use.
 
     Returns:
@@ -50,12 +89,22 @@ async def get_embeddings(texts: Union[str, List[str]], model: str = "text-embedd
 
 async def generate_summary(text: str, max_words: int = 30) -> str:
     try:
-        logger.info("Generating summary for text.", text_length=len(text))
+        # --- Preprocessing ---
+        # Normalize whitespace: replace multiple spaces/newlines/tabs with a single space
+        processed_text = re.sub(r'\s+', ' ', text).strip()
+        # Optional: Add more cleaning steps here if needed
+        # ---------------------
+
+        logger.info("Generating summary for text.", original_length=len(text), processed_length=len(processed_text))
+        if not processed_text:
+             logger.warning("Input text became empty after processing.")
+             return "" 
+
         response = await client.chat.completions.create(
-            model="gpt-4.1",  # Changed model from gpt-4.1
+            model="gpt-4.1",
             messages=[
                 {"role": "system", "content": f"Summarize the following text in approximately {max_words} words. Identify the main topic or provide a concise title as part of the summary."},
-                {"role": "user", "content": text}
+                {"role": "user", "content": processed_text} # Use processed text
             ],
             max_tokens=max_words + 20,
             temperature=0.5,
