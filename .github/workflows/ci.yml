@@ -23,6 +23,8 @@ jobs:
           uv run ruff check --fix
           uv run ruff check --unsafe-fixes
       - name: Test
-        run: uv run pytest
+        run: |
+          export PYTHONPATH=$PYTHONPATH:$(pwd)/src
+          uv run pytest
       - name: Build Docker image
         run: docker build -t flowlined-zeb .
