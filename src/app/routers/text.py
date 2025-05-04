@@ -16,7 +16,7 @@ async def summarize(request: SummarizeRequest):
         summary = await generate_summary(request.text)
         return SummarizeResponse(summary=summary)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @router.post("/similarity", response_model=SimilarityResponse)
 async def similarity(request: SimilarityRequest):
@@ -27,4 +27,4 @@ async def similarity(request: SimilarityRequest):
             score=score
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

@@ -32,7 +32,7 @@ async def summarize(request: SummarizeRequest):
         summary_text = await generate_summary(request.text)
         return SummarizeResponse(summary=summary_text)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/v1/similarity", response_model=SimilarityResponse)
 async def similarity(request: SimilarityRequest):
@@ -43,7 +43,7 @@ async def similarity(request: SimilarityRequest):
             score=max_similarity
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.get("/health", response_model=HealthResponse)
 async def health():
