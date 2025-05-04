@@ -10,13 +10,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "~/.cargo/bin" >> $GITHUB_PATH
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
-          pip install pytest
+          uv sync 
+          uv pip install pytest ruff
       - name: Lint
         run: |
-          pip install ruff
           ruff check --select UP035 --add-noqa
       - name: Test
         run: pytest
