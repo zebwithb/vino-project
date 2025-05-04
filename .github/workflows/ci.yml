@@ -21,6 +21,7 @@ jobs:
       - name: Lint
         run: |
           uv run ruff check --fix
+          uv run ruff check --unsafe-fixes
       - name: Test
         run: uv run pytest
       - name: Build Docker image

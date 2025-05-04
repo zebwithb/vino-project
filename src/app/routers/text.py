@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException
+
 from ..schemas.text import (
-    SummarizeRequest, 
-    SummarizeResponse, 
-    SimilarityRequest, 
-    SimilarityResponse
+    SimilarityRequest,
+    SimilarityResponse,
+    SummarizeRequest,
+    SummarizeResponse,
 )
-from ..services.text_analysis import generate_summary, find_most_similar
+from ..services.text_analysis import find_most_similar, generate_summary
 
 router = APIRouter(prefix="/v1", tags=["text"])
 

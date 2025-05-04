@@ -1,5 +1,6 @@
+
 from pydantic import BaseModel, Field
-from typing import List
+
 
 class SummarizeRequest(BaseModel):
     text: str = Field(..., min_length=1, example="This is a long article about AI and its impact on society.")
@@ -23,7 +24,7 @@ class SummarizeResponse(BaseModel):
 
 class SimilarityRequest(BaseModel):
     query: str = Field(..., min_length=1, example="What is artificial intelligence?")
-    texts: List[str] = Field(..., min_items=1, example=[
+    texts: list[str] = Field(..., min_items=1, example=[
         "Artificial intelligence is the simulation of human intelligence in machines.",
         "Machine learning is a subset of AI.",
         "Deep learning is a technique for implementing machine learning."

@@ -1,10 +1,13 @@
-import pytest
-from unittest.mock import AsyncMock, MagicMock
-from fastapi.testclient import TestClient
-from src.main import app, start_time
-from src.app.services.text_analysis import split_text_recursively
 import time
+from unittest.mock import AsyncMock, MagicMock
+
 import openai
+import pytest
+from fastapi.testclient import TestClient
+
+from src.app.services.text_analysis import split_text_recursively
+from src.main import app, start_time
+
 
 @pytest.fixture(autouse=True)
 def mock_openai(mocker):

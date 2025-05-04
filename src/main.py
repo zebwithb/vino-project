@@ -1,8 +1,9 @@
 import time
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
-from typing import List
-from .app.services.text_analysis import generate_summary, find_most_similar
+
+from .app.services.text_analysis import find_most_similar, generate_summary
 
 app = FastAPI()
 start_time = time.time()
@@ -15,7 +16,7 @@ class SummarizeResponse(BaseModel):
 
 class SimilarityRequest(BaseModel):
     query: str = Field(..., min_length=1)
-    texts: List[str] = Field(..., min_items=1)
+    texts: list[str] = Field(..., min_items=1)
 
 class SimilarityResponse(BaseModel):
     closest_text: str

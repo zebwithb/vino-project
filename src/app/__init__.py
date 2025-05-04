@@ -1,6 +1,7 @@
 from fastapi import FastAPI
+
 from .core.config import settings
-from .routers import text, health
+from .routers import health, text
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

@@ -1,9 +1,10 @@
+import re
 import sys
-import re 
-from typing import List, Union 
-from openai import AsyncOpenAI
+
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from loguru import logger
-from langchain.text_splitter import RecursiveCharacterTextSplitter 
+from openai import AsyncOpenAI
+
 from ..core.config import settings
 
 logger.remove()
@@ -15,8 +16,8 @@ def split_text_recursively(
     text: str,
     chunk_size: int = 1000,
     chunk_overlap: int = 150,
-    separators: List[str] = None
-) -> List[str]:
+    separators: list[str] = None
+) -> list[str]:
     """
     Splits text recursively using LangChain's RecursiveCharacterTextSplitter.
 
@@ -45,12 +46,12 @@ def split_text_recursively(
         chunks = text_splitter.split_text(text)
         logger.info(f"Text split into {len(chunks)} chunks.")
         return chunks
-    except Exception as e:
+    except Exception:
         logger.exception("Error during recursive text splitting.")
         # Depending on requirements, you might return [] or re-raise
         return []
 
-async def get_embeddings(texts: Union[str, List[str]], model: str = "text-embedding-3-small") -> Union[List[float], List[List[float]]]:
+async def get_embeddings(texts: str | list[str], model: str = "text-embedding-3-small") -> list[float] | list[list[float]]:
     """
     Generates embeddings for a single text or a list of texts.
 
@@ -83,7 +84,7 @@ async def get_embeddings(texts: Union[str, List[str]], model: str = "text-embedd
         logger.info(f"Successfully retrieved {len(embeddings)} embedding(s).")
 
         return embeddings[0] if is_single_text else embeddings
-    except Exception as e:
+    except Exception:
         logger.exception(f"Error getting embeddings with model {model}.")
         raise  # Re-raise the exception to be handled upstream
 
@@ -161,11 +162,11 @@ async def generate_summary(text: str, max_words: int = 30) -> str:
         summary = response.choices[0].message.content.strip()
         logger.info("Summary generated successfully.", summary_length=len(summary), summary_words=len(summary.split()))
         return summary
-    except Exception as e:
+    except Exception:
         logger.exception("Error during summarization.")
         raise
 
-async def find_most_similar(query: str, texts: List[str]) -> tuple[str, float]:
+async def find_most_similar(query: str, texts: list[str]) -> tuple[str, float]:
     try:
         logger.info("Finding most similar text.", query=query, num_texts=len(texts))
 
@@ -202,17 +203,17 @@ async def find_most_similar(query: str, texts: List[str]) -> tuple[str, float]:
 
         logger.info("Similarity calculation successful.", closest_text=closest_text, score=max_similarity)
         return closest_text, max_similarity
-    except Exception as e:
+    except Exception:
         logger.exception("Error during similarity calculation.")
         raise
 
-def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
+def cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
     norm1 = sum(a * a for a in vec1) ** 0.5
     norm2 = sum(b * b for b in vec2) ** 0.5
     if norm1 == 0 or norm2 == 0:
         logger.warning("Attempted cosine similarity with zero vector.")
         return 0.0
-    dot_product = sum(a * b for a, b in zip(vec1, vec2))
+    dot_product = sum(a * b for a, b in zip(vec1, vec2, strict=False))
     similarity = dot_product / (norm1 * norm2)
     # Clamp value due to potential floating point inaccuracies
     return max(-1.0, min(1.0, similarity))
