@@ -1,4 +1,5 @@
 import time
+import os
 from unittest.mock import AsyncMock, MagicMock
 
 import openai
@@ -8,6 +9,10 @@ from fastapi.testclient import TestClient
 from src.app.services.text_analysis import split_text_recursively
 from src.main import app, start_time
 
+
+@pytest.fixture(autouse=True)
+def set_openai_api_key(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
 
 @pytest.fixture(autouse=True)
 def mock_openai(mocker):
