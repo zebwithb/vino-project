@@ -20,7 +20,7 @@ jobs:
           uv pip install pytest ruff
       - name: Lint
         run: |
-          ruff check --select UP035 --add-noqa
+          uv run ruff check --select UP035 --add-noqa
       - name: Test
         run: pytest
       - name: Build Docker image
