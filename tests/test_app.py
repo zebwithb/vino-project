@@ -1,8 +1,6 @@
 import time
-import os
 from unittest.mock import AsyncMock, MagicMock
 
-import openai
 import pytest
 from fastapi.testclient import TestClient
 

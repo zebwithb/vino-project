@@ -16,7 +16,7 @@ class SummarizeResponse(BaseModel):
 
 class SimilarityRequest(BaseModel):
     query: str = Field(..., min_length=1)
-    texts: list[str] = Field(..., min_items=1)
+    texts: list[str] = Field(..., min_length=1)
 
 class SimilarityResponse(BaseModel):
     closest_text: str
