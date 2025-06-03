@@ -1,16 +1,15 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Dict, Any, Optional
+from typing import Optional
 import os
 import uuid # For session IDs
 
-from app.models import QueryRequest, QueryResponse, UploadResponse, FileListResponse, ProcessingResult
+from app.models import QueryRequest, QueryResponse, UploadResponse, FileListResponse
 from app.services.chat_service import chat_service # Singleton instance
 from app.services.vector_db_service import vector_db_service # Singleton instance
 from app.services.document_service import (
     store_uploaded_file,
-    load_single_document,
-    list_uploaded_files_in_dir
+    load_single_document
 )
 from app import config # To access USER_UPLOADS_DIR etc.
 

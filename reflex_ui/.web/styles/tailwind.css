@@ -1,0 +1,7 @@
+
+@import "tailwindcss/base";
+
+@import url('@radix-ui/themes/styles.css');
+
+@tailwind components;
+@tailwind utilities;

@@ -15,6 +15,13 @@ USER_UPLOADS_DIR = os.path.join(PROJECT_ROOT, "data", "user_uploads")
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 200
 
+# --- CORS CONFIG ---
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # Default Reflex frontend port
+    "http://127.0.0.1:3000",
+    # Add any other origins if needed
+]
+
 # --- API KEYS ---
 raw_google_api_key = os.getenv("GEMINI_KEY_API")
 if not raw_google_api_key:
@@ -37,3 +44,4 @@ os.makedirs(USER_UPLOADS_DIR, exist_ok=True)
 os.makedirs(CHROMA_DB_PATH, exist_ok=True)
 # Ensure framework documents directory exists (optional, can be created manually)
 # os.makedirs(DOCUMENTS_DIR, exist_ok=True)
+

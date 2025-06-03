@@ -2,7 +2,6 @@ from typing import List, Dict, Any, Optional, Tuple
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage, SystemMessage
-from langchain_core.prompts import ChatPromptTemplate
 
 from app import config
 # Assuming your prompt_engineering package is structured as discussed
@@ -68,10 +67,12 @@ class ChatService:
 # TODO Handle when it is None
     def _add_results_to_context(self, results: Dict[str, Optional[List[Any]]], section_title: str, context: str = "") -> Tuple[str, bool]:
         has_results = False
-        if results and results.get('documents') and results['documents'][0]: # ChromaDB returns list of lists
+        if results and results.get('documents') and results['documents'] is not None and results['documents'][0]: # ChromaDB returns list of lists
             context += f"\n--- {section_title} ---\n"
             for i, doc_content in enumerate(results['documents'][0]):
-                metadata = results['metadatas'][0][i] if results.get('metadatas') and results['metadatas'][0] else {}
+                metadata = {}
+                if results.get('metadatas') and results['metadatas'] is not None and results['metadatas'][0] is not None:
+                    metadata = results['metadatas'][0][i] if i < len(results['metadatas'][0]) else {}
                 source = metadata.get('filename', "Unknown source")
                 context += f"\n--- From {source} (Chunk {metadata.get('chunk', 'N/A')}) ---\n{doc_content}\n"
             has_results = True
@@ -157,12 +158,13 @@ class ChatService:
             if current_step == 3 and "PLANNER DEFINED:" in ai_response_content: # Example trigger
                 # Extract planner (this is a simplistic example)
                 try:
-                    planner = ai_response_content.split("PLANNER DEFINED:")[1].strip()
+                    if isinstance(ai_response_content, str):
+                        planner = ai_response_content.split("PLANNER DEFINED:")[1].strip()
                 except IndexError:
                     pass # Planner not found or format incorrect
 
             self._update_session_data(session_id, history, current_step, planner)
-            return ai_response_content, self._convert_langchain_history_to_api(history), current_step, planner
+            return str(ai_response_content), self._convert_langchain_history_to_api(history), current_step, planner
 
         except Exception as e:
             print(f"Error during LLM chain invocation: {e}")

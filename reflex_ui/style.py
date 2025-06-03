@@ -7,7 +7,7 @@ chat_margin = "20%"
 message_style = dict(
     padding="1em",
     border_radius="5px",
-    margin_y="0.5em",
+    margin_y="1em",
     box_shadow=shadow,
     max_width="40em",
     display="inline-block",
@@ -26,7 +26,7 @@ answer_style = message_style | dict(
 # Styles for the action bar.
 input_style = dict(
     border_width="1px",
-    padding="0.5em",
+    padding="1em",
     box_shadow=shadow,
     width="40em",
 )

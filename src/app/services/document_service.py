@@ -1,7 +1,7 @@
 import os
 import glob
 import PyPDF2
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 
 from app import config
 from app.models import ProcessingResult, DocumentMetadata

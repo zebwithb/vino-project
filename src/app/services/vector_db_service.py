@@ -1,6 +1,7 @@
+import os
 import chromadb
 import chromadb.utils.embedding_functions as embedding_functions
-from typing import Tuple, List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional
 
 from app import config
 from app.models import ProcessingResult
@@ -55,7 +56,7 @@ class VectorDBService:
         try:
             collection.add(
                 documents=processing_result.documents,
-                metadatas=processing_result.metadatas,
+                metadatas=[{k: str(v) for k, v in metadata.items()} for metadata in processing_result.metadatas],
                 ids=processing_result.ids
             )
             return True
@@ -69,7 +70,13 @@ class VectorDBService:
     def query_collection(self, collection_name: str, query_texts: List[str], n_results: int = 3) -> Dict[str, Optional[List[Any]]]:
         collection = self.frameworks_collection if collection_name == config.FRAMEWORKS_COLLECTION_NAME else self.user_documents_collection
         try:
-            return collection.query(query_texts=query_texts, n_results=n_results)
+            query_result = collection.query(query_texts=query_texts, n_results=n_results)
+            return {
+                "ids": query_result["ids"] if "ids" in query_result else None,
+                "documents": query_result["documents"] if "documents" in query_result else None,
+                "metadatas": query_result["metadatas"] if "metadatas" in query_result else None,
+                "distances": query_result["distances"] if "distances" in query_result else None
+            }
         except Exception as e:
             print(f"Error querying collection {collection_name}: {e}")
             return {"ids": None, "documents": None, "metadatas": None, "distances": None} # Ensure consistent error return
@@ -87,7 +94,7 @@ class VectorDBService:
                 for metadata in all_docs["metadatas"]:
                     if metadata and "filename" in metadata:
                         filename = metadata["filename"]
-                        file_chunk_counts[filename] = file_chunk_counts.get(filename, 0) + 1
+                        file_chunk_counts[str(filename)] = file_chunk_counts.get(str(filename), 0) + 1
                 
                 for filename, count in file_chunk_counts.items():
                     user_doc_summary.append({"filename": filename, "chunks_in_db": count})
