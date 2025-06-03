@@ -1,6 +1,5 @@
 import reflex as rx
 from app.components.chat_interface import chat_interface
-from app.states.chat_state import ChatState
 
 
 def index() -> rx.Component:
