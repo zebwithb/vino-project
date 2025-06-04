@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Body
 from typing import Dict, Any
-from ..models import ChatRequest, ChatResponse
+from ..models import QueryRequest as ChatResponse, QueryResponse as ChatRequest
 # Import the instance of ChatService
 from ..services.chat_service import chat_service
 
@@ -33,7 +33,7 @@ async def handle_chat_request(request: ChatRequest = Body(...)):
         
         if not ai_response_content: # Or based on some error indicator from process_query
             raise HTTPException(status_code=404, detail="Could not generate an answer.")
-        
+        #TODO fix model parameters
         return ChatResponse(
             response=ai_response_content,
             current_step=updated_current_step,

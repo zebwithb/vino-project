@@ -20,12 +20,24 @@ class ProcessingResult(BaseModel):
     Results from processing a document, potentially for internal service use
     or a detailed response from a document processing endpoint.
     """
-    original_filename: str = Field(..., alias="filename") # Keep original field name if used
-    documents_processed_texts: List[str] = Field(default_factory=list, alias="documents") # List of text from chunks
-    metadatas_for_db: List[Dict[str, Any]] = Field(default_factory=list, alias="metadatas") # For ChromaDB
-    ids_for_db: List[str] = Field(default_factory=list, alias="ids") # For ChromaDB
+    
+    filename: str
+    documents_processed_texts: List[str] = Field(default_factory=list, description="List of text from chunks")
+    metadatas_for_db: List[Dict[str, Any]] = Field(default_factory=list, description="Metadata for ChromaDB")
+    ids_for_db: List[str] = Field(default_factory=list, description="IDs for ChromaDB")
     chunk_count: int = 0
     message: Optional[str] = None
+    
+    @classmethod
+    def create_empty(cls, filename: str) -> 'ProcessingResult':
+        """Create an empty ProcessingResult with just the filename."""
+        return cls(
+            filename=filename,
+            documents_processed_texts=[],
+            metadatas_for_db=[],
+            ids_for_db=[],
+            chunk_count=0
+        )
 
 
 # --- API Request/Response Models ---

@@ -39,6 +39,14 @@ LLM_MAX_RETRIES = 2
 FRAMEWORKS_COLLECTION_NAME = "frameworks"
 USER_DOCUMENTS_COLLECTION_NAME = "user_documents"
 
+# ChromaDB Configuration
+CHROMA_SERVER_HOST = os.getenv("CHROMA_SERVER_HOST", "localhost")
+CHROMA_SERVER_PORT = int(os.getenv("CHROMA_SERVER_PORT", "8001"))  # Default to 8001 for local dev, 8000 in Docker
+CHROMA_SERVER_URL = f"http://{CHROMA_SERVER_HOST}:{CHROMA_SERVER_PORT}"
+
+# Use Docker-based ChromaDB or local persistent client
+USE_CHROMA_SERVER = os.getenv("USE_CHROMA_SERVER", "false").lower() == "true"
+
 # Ensure upload directory exists
 os.makedirs(USER_UPLOADS_DIR, exist_ok=True)
 os.makedirs(CHROMA_DB_PATH, exist_ok=True)

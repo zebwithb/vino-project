@@ -1,133 +1,210 @@
-# AI Text Utility API
+# Vino Project
 
-A FastAPI-based REST API that provides text summarization and semantic similarity features using OpenAI's API.
+A FastAPI-based document processing and semantic search application that combines ChromaDB vector database with Google's Generative AI for intelligent document retrieval and question answering.
 
 ## Features
 
-- Text summarization endpoint (`/v1/summarize`)
-- Semantic similarity comparison (`/v1/similarity`)
-- Health check endpoint (`/health`)
+- **Document Processing**: Support for PDF and text file processing with intelligent chunking
+- **Semantic Search**: Vector-based similarity search using Google Generative AI embeddings
+- **Dual Storage**: Framework documentation and user-uploaded document collections
+- **Flexible Deployment**: Local ChromaDB or Docker container support
+- **RESTful API**: FastAPI-based endpoints for document management and search
+- **Auto-Loading**: Automatic framework documentation loading on startup
 
-## Prerequisites
+## Architecture
 
-- Docker and Docker Compose
-- OpenAI API key
+- **FastAPI**: Modern web framework for building APIs
+- **ChromaDB**: Vector database for document embeddings and similarity search
+- **Google Generative AI**: Embedding function for semantic understanding
+- **Pydantic**: Data validation and serialization
+- **PyPDF2**: PDF text extraction
+
+## Project Structure
+
+```
+vino-project/
+├── src/app/
+│   ├── config.py              # Configuration management
+│   ├── main.py                # FastAPI application entry point
+│   ├── models.py              # Pydantic data models
+│   └── services/
+│       ├── document_service.py    # Document processing utilities
+│       └── vector_db_service.py   # ChromaDB management
+├── data/
+│   ├── framework_docs/        # Pre-loaded documentation
+│   └── user_uploads/          # User-uploaded files
+├── chromadb/                  # Local ChromaDB storage
+├── docker-compose.yml         # Docker services configuration
+└── requirements.txt           # Python dependencies
+```
 
 ## Quick Start
 
-1. Clone the repository
-2. Create a `.env` file with your OpenAI API key:
-   ```
-   OPENAI_API_KEY=your_api_key_here
-   ```
-3. Start the service:
+### Prerequisites
+
+- Python 3.8+
+- Google Generative AI API key
+- Docker (optional, for ChromaDB server mode)
+
+### Installation
+
+1. **Clone the repository**
    ```bash
-   docker-compose up --build
+   git clone <repository-url>
+   cd vino-project
    ```
-4. The API will be available at `http://localhost:8000`
+
+2. **Create virtual environment**
+   ```bash
+   python -m venv venv
+   # Windows
+   venv\Scripts\activate
+   # Linux/Mac
+   source venv/bin/activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Set up environment variables**
+   Create a `.env` file in the project root:
+   ```env
+   GEMINI_KEY_API=your_google_api_key_here
+   
+   # ChromaDB Configuration (optional)
+   USE_CHROMA_SERVER=false
+   CHROMA_SERVER_HOST=localhost
+   CHROMA_SERVER_PORT=8001
+   ```
+
+### Running the Application
+
+#### Local Mode (Default)
+```bash
+# Start the FastAPI application
+python -m uvicorn src.app.main:app --reload
+
+# Access the API at http://localhost:8000
+# View API docs at http://localhost:8000/docs
+```
+
+#### Docker Mode (ChromaDB Server)
+```bash
+# Start ChromaDB container
+docker-compose up -d chromadb
+
+# Update .env: USE_CHROMA_SERVER=true
+# Then start the FastAPI application
+python -m uvicorn src.app.main:app --reload
+```
 
 ## API Endpoints
 
-### 1. Summarize Text
-```
-POST /v1/summarize
-```
-Request body:
-```json
-{
-    "text": "Your long text here"
-}
-```
-Response:
-```json
-{
-    "summary": "Concise summary of the text"
-}
-```
+### Document Management
 
-### 2. Find Similar Text
-```
-POST /v1/similarity
-```
-Request body:
-```json
-{
-    "query": "Your query text",
-    "texts": ["Text A", "Text B", "Text C"]
-}
-```
-Response:
-```json
-{
-    "closest_text": "Most similar text",
-    "score": 0.95
-}
+
+
+### Search & Query
+- `POST /query` - Semantic search across documents
+- `POST /chat` - Interactive Q&A with document context
+
+### Health & Status
+- `GET /health/chromadb` - Check ChromaDB connection status
+
+## Configuration
+
+Key configuration options in `src/app/config.py`:
+
+- `CHUNK_SIZE`: Document chunk size (default: 1000 characters)
+- `CHUNK_OVERLAP`: Overlap between chunks (default: 200 characters)
+- `FRAMEWORKS_COLLECTION_NAME`: Name for framework docs collection
+- `USER_DOCUMENTS_COLLECTION_NAME`: Name for user docs collection
+- `DOCUMENTS_DIR`: Directory for framework documentation
+- `USER_UPLOADS_DIR`: Directory for user uploads
+
+## Usage Examples
+
+### Upload a Document
+```bash
+curl -X POST "http://localhost:8000/upload" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@document.pdf"
 ```
 
-### 3. Health Check
-```
-GET /health
-```
-Response:
-```json
-{
-    "status": "ok",
-    "uptime": 123.45
-}
-```
-
-## How to Build, Run, and Test
-
-### Prerequisites
-
-- Docker and Docker Compose
-- OpenAI API key
-
-### Build & Run
-
-1. Clone the repository.
-2. Create a `.env` file in the root directory with your OpenAI API key:
-   ```
-   OPENAI_API_KEY=your_api_key_here
-   ```
-3. Build and start the service:
-   ```
-   docker-compose up --build
-   ```
-   The API will be available at [http://localhost:8000](http://localhost:8000).
-
-### Testing
-
-To run tests:
-```
-docker-compose run api pytest tests/
+### Search Documents
+```bash
+curl -X POST "http://localhost:8000/query" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "What is machine learning?",
+    "collection": "user_documents",
+    "max_results": 5
+  }'
 ```
 
-### API Documentation
+### Interactive Chat
+```bash
+curl -X POST "http://localhost:8000/chat" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Explain the main concepts from the uploaded documents"
+  }'
+```
 
-- Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
-- ReDoc: [http://localhost:8000/redoc](http://localhost:8000/redoc)
+## Development
 
-## Architectural Decisions
+### Adding Framework Documentation
+Place PDF or text files in the `data/framework_docs/` directory. They will be automatically loaded when the application starts.
 
-- **FastAPI** was chosen for its speed, async support, and automatic OpenAPI documentation.
-- **Docker** ensures consistent deployment and easy local development.
-- **OpenAI API** is used for summarization and semantic similarity due to its state-of-the-art language models.
-- **Chunking Strategy:** Recursive character splitting (see `docs/process.md`) is used for text chunking, balancing simplicity and generality.
-- **Prompting Strategy:** Tiered-based prompting is implemented for adaptability and future extensibility (see `docs/process.md` for alternatives considered).
-- **Input validation** is handled with Pydantic models for security and reliability.
-- **Testing** is done with Pytest for simplicity and integration with Docker.
+### Extending File Support
+Add new file type handlers in `src/app/services/document_service.py` in the `load_single_document()` function.
 
-For detailed rationale and diagrams, see [docs/process.md](docs/process.md).
+### Custom Embeddings
+Replace the Google Generative AI embedding function in `src/app/services/vector_db_service.py` with your preferred embedding model.
 
-## Error Handling
+## Deployment
 
-- 400-level errors for invalid input
-- 500-level errors for internal server errors
-- Detailed error messages in the response body
+### Production Considerations
+- Use environment variables for all sensitive configuration
+- Configure proper CORS origins for your frontend
+- Set up proper logging and monitoring
+- Consider using a managed ChromaDB instance for production
+- Implement rate limiting and authentication as needed
 
-## Security
+### Docker Deployment
+```bash
+# Build and run with Docker Compose
+docker-compose up -d
 
-- API key is handled via environment variables
-- Input validation using Pydantic models
-- No sensitive data in logs or error messages
+# Or run ChromaDB separately
+docker-compose up -d chromadb
+```
+
+## Troubleshooting
+
+### Common Issues
+- **ChromaDB Connection**: Check that the ChromaDB server is running if using server mode
+- **API Key**: Ensure your Google Generative AI API key is properly set
+- **File Uploads**: Verify the upload directory exists and has write permissions
+- **PDF Processing**: Some PDFs may not extract text properly; consider OCR solutions for scanned documents
+
+### Debugging
+Enable debug logging by setting the log level in your environment or configuration.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Submit a pull request
+
+## License
+
+[Add your license information here]
+
+## Support
+
+[Add support/contact information here]
