@@ -4,7 +4,7 @@ from typing import Optional
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from .matrix_definitions import UNIVERSAL_MATRIX_STEPS
+from .matrix_definitions import UNIVERSAL_MATRIX_STEPS, SIMPLIFIED_UNIVERSAL_MATRIX_STEPS
 from .templates import (
     BASE_SYSTEM_PROMPT,
     STEP_SPECIFIC_SYSTEM_PROMPT_TEMPLATE,
@@ -47,7 +47,7 @@ def get_universal_matrix_prompt(
             ("human", "Context:\n{general_context}\n\nUser: {question}")
         ]).partial(general_context=general_context, question=question)
 
-    step_info = UNIVERSAL_MATRIX_STEPS[current_step]
+    step_info = SIMPLIFIED_UNIVERSAL_MATRIX_STEPS[current_step]
     step_name = step_info["name"]
     step_concept = step_info["concept"]
     # Format guiding questions for readability in the prompt

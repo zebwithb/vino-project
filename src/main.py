@@ -3,7 +3,7 @@ import os
 import uuid
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.schemas.models import QueryRequest, QueryResponse, UploadResponse, FileListResponse, HealthResponse
@@ -46,21 +46,42 @@ app.add_middleware(
 # --- API Endpoints ---
 
 @app.post("/v1/chat", response_model=QueryResponse)
-async def chat_with_vino(request: QueryRequest, session_id: Optional[str] = Form(None)):
+async def chat_with_vino(request: QueryRequest, session_id: Optional[str] = None):
     """
     Main endpoint for interacting with the VINO AI assistant.
     Manages conversation state using a session_id.
+    Supports alignment options, explain mode, tasks mode, and file context.
     """
-    if not session_id:
-        session_id = str(uuid.uuid4())  # Generate a new session ID if not provided
+    # Use session_id from request or generate new one
+    effective_session_id = session_id or request.session_id or str(uuid.uuid4())
 
     try:
-        response_text, updated_history, new_step, new_planner = chat_service.process_query(
-            session_id=session_id,
+        # TODO: The chat_service.process_query method needs to be enhanced to accept:
+        # - request.selected_alignment
+        # - request.explain_active  
+        # - request.tasks_active
+        # - request.uploaded_file_context_name
+        # For now, we'll pass the basic parameters and log the additional ones
+        if request.selected_alignment:
+            print(f"Selected alignment: {request.selected_alignment}")
+        if request.explain_active:
+            print("Explain mode active")
+        if request.tasks_active:
+            print("Tasks mode active")        
+        if request.uploaded_file_context_name:
+            print(f"Using file context: {request.uploaded_file_context_name}")
+            
+        response_text, _updated_history, new_step, new_planner = chat_service.process_query(
+            session_id=effective_session_id,
             query_text=request.query_text,
             api_history_data=request.history,
-            current_step_override=request.current_step  # Allow client to suggest step
+            current_step_override=request.current_step,
+            selected_alignment=request.selected_alignment,
+            explain_active=request.explain_active,
+            tasks_active=request.tasks_active,
+            uploaded_file_context_name=request.uploaded_file_context_name
         )
+        
         return QueryResponse(
             response=response_text,
             current_step=new_step,

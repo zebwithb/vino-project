@@ -36,7 +36,7 @@ class ChatState(rx.State):
     selected_alignment: AlignmentOption = "Guidance"
     explain_active: bool = False
     tasks_active: bool = False
-    uploaded_file_name: str = "" # Name of the file displayed in UI
+    uploaded_file_name: Optional[str] = "" # Name of the file displayed in UI
     # TODO LOOSE END 3.2: Consider if a separate internal reference to the uploaded file is needed for the API
     # e.g., a file ID returned by the FastAPI upload endpoint. For now, we'll pass the filename.
     show_prompt_toolbox: bool = False
@@ -49,9 +49,9 @@ class ChatState(rx.State):
     def toggle_prompt_toolbox(self):
         self.show_prompt_toolbox = (
             not self.show_prompt_toolbox
-        )
+        )    
 
-    @rx.event
+    @rx.event 
     def set_selected_alignment(
         self, alignment: AlignmentOption
     ):
@@ -74,31 +74,50 @@ class ChatState(rx.State):
         file = files[0]
         upload_data = await file.read()
         
-        # TODO LOOSE END 3.1: Implement actual file upload to FastAPI backend
-        # The following lines save locally, which is good for rx.UploadFile,
-        # but the data needs to be sent to FastAPI's /v1/upload_document
-        # For now, we'll just set the filename for UI display.
-        # Example of how you might upload to FastAPI:
-        # async with httpx.AsyncClient() as client:
-        #     try:
-        #         api_files = {'file': (file.name, upload_data, file.content_type)}
-        #         response = await client.post(f"{FASTAPI_BASE_URL}/v1/upload_document", files=api_files, timeout=60.0)
-        #         response.raise_for_status()
-        #         # Assuming FastAPI returns info about the uploaded file, e.g., its server-side filename or ID
-        #         # upload_response_data = response.json()
-        #         async with self:
-        #             self.uploaded_file_name = file.name # Or use filename from response
-        #             # self.uploaded_file_reference_for_api = upload_response_data.get("server_filename_or_id")
-        #     except Exception as e:
-        #         print(f"Error uploading file to FastAPI: {e}") # Handle error appropriately in UI
-        #         async with self:
-        #             self.uploaded_file_name = f"Error uploading {file.name}" # Indicate error in UI
-        #         return
-
-        # For now, just setting the name for UI and assuming backend handles it by name later
-        async with self:
-            self.uploaded_file_name = file.name
-            print(f"File '{file.name}' selected. TODO: Implement upload to FastAPI backend.")
+        # Upload file to FastAPI backend
+        async with httpx.AsyncClient() as client:
+            try:
+                # Prepare the file for upload to FastAPI
+                api_files = {'file': (file.filename, upload_data, file.content_type or 'application/octet-stream')}
+                response = await client.post(
+                    f"{FASTAPI_BASE_URL}/upload_document", 
+                    files=api_files, 
+                    timeout=60.0
+                )
+                response.raise_for_status()
+                
+                # Get response data from FastAPI
+                upload_response_data = response.json()
+                
+                async with self:
+                    self.uploaded_file_name = upload_response_data.get("filename", file.filename)
+                    print(f"File '{self.uploaded_file_name}' successfully uploaded to FastAPI backend.")
+                    
+            except httpx.HTTPStatusError as e:
+                error_detail = e.response.text
+                try:
+                    error_json = e.response.json()
+                    if "detail" in error_json:
+                        error_detail = error_json["detail"]
+                except ValueError:
+                    pass
+                
+                print(f"HTTP error uploading file to FastAPI: {e.response.status_code} - {error_detail}")
+                async with self:
+                    self.uploaded_file_name = f"Error uploading {file.filename}: {error_detail}"
+                return
+                
+            except httpx.RequestError as e:
+                print(f"Network error uploading file to FastAPI: {str(e)}")
+                async with self:
+                    self.uploaded_file_name = f"Network error uploading {file.filename}"
+                return
+                
+            except Exception as e:
+                print(f"Unexpected error uploading file to FastAPI: {e}")
+                async with self:
+                    self.uploaded_file_name = f"Error uploading {file.filename}"
+                return
 
 
     @rx.event

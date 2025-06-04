@@ -1,5 +1,4 @@
 from fastapi import APIRouter, HTTPException, Body
-from typing import Dict, Any
 from ..schemas.models import QueryRequest as ChatRequest, QueryResponse as ChatResponse
 from ..services.chat_service import chat_service
 

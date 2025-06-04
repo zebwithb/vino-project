@@ -55,5 +55,61 @@ UNIVERSAL_MATRIX_STEPS = {
             "What are the final refinements to the plan based on these boundaries?",
         ]
     }
-    # Steps 7-12 could be added here if needed later
+}
+
+SIMPLIFIED_UNIVERSAL_MATRIX_STEPS = {
+    1: {
+        "name": "Starting Point",
+        "concept": "The very beginning of your project. What you start with.",
+        "questions": [
+            "What is the starting point or initial state of the process/project?",
+            "What are the core components or sub-aspects of this initial point?",
+            "How does it represent the possibility of existence or appearance for this project?",
+        ]
+    },
+    2: {
+        "name": "Making Connections",
+        "concept": "Linking key parts together and understanding how they relate. Figuring out if an idea can work.",
+        "questions": [
+            "What follows the initial point? What key elements need to be connected?",
+            "What is the relationship between these elements?",
+            "How does this represent the core possibility and probability for the project's success?",
+        ]
+    },
+    3: {
+        "name": "First Plan",
+        "concept": "What happens when you combine the connected parts. Making the first version of your plan.",
+        "questions": [
+            "What emerges from the interaction of the elements defined in Step 2?",
+            "Based on Steps 1 & 2, what are the key pillars for this project?",
+            "Let's define the initial 6-step plan based on the Universal Matrix framework and our discussion so far. What are the key objectives/tasks for each of the 6 steps?",
+        ]
+    },
+    4: {
+        "name": "Seeing the Results / Options",
+        "concept": "Exploring different design options based on your initial plan and seeing what's possible.",
+        "questions": [
+            "What is the manifested result of the interaction defined in Step 3 (the initial plan)?",
+            "How does this create a 'plane' of possibilities for development?",
+            "How can we refine the plan (Step 3 output) based on these possibilities?",
+        ]
+    },
+    5: {
+        "name": "Choosing the Best Path",
+        "concept": "Selecting the most effective design and starting to build the first working version.",
+        "questions": [
+            "What is the central focus or 'true motive' within the possibilities from Step 4?",
+            "What is the most effective direction or 'vector' for the project to take?",
+            "How should we adjust the plan to align with this chosen vector?",
+        ]
+    },
+    6: {
+        "name": "Finishing Up / Setting Limits",
+        "concept": "Defining the project's final limits and what's included. This helps make sure it gets done.",
+        "questions": [
+            "What defines the completed boundary or scope for this phase/project?",
+            "How does this boundary limit options but enable realization?",
+            "What are the final refinements to the plan based on these boundaries?",
+        ]
+    }
 }

@@ -75,17 +75,52 @@ class ChatService:
                 source = metadata.get('filename', "Unknown source")
                 context += f"\n--- From {source} (Chunk {metadata.get('chunk', 'N/A')}) ---\n{doc_content}\n"
             has_results = True
-        return context, has_results
-
-    def process_query(self, session_id: str, query_text: str, api_history_data: List[Dict[str, Any]], current_step_override: Optional[int] = None) -> Tuple[str, List[Dict[str, Any]], int, Optional[str]]:
+        return context, has_results    
+    
+    def process_query(
+        self, 
+        session_id: str, 
+        query_text: str, 
+        api_history_data: List[Dict[str, Any]], 
+        current_step_override: Optional[int] = None,
+        selected_alignment: Optional[str] = None,
+        explain_active: Optional[bool] = False,
+        tasks_active: Optional[bool] = False,
+        uploaded_file_context_name: Optional[str] = None
+    ) -> Tuple[str, List[Dict[str, Any]], int, Optional[str]]:
         history, current_step, planner = self._get_session_data(session_id)
 
-        if current_step_override is not None and 1 <= current_step_override <= 6 :
+        if current_step_override is not None and 1 <= current_step_override <= 6:
             current_step = current_step_override
-            if current_step_override == 1: # Reset history if jumping back to step 1
+            if current_step_override == 1:  # Reset history if jumping back to step 1
                 history = []
                 planner = None
 
+        # Handle uploaded file context
+        file_context = ""
+        if uploaded_file_context_name:
+            try:
+                # TODO: Implement file context retrieval
+                # For now, just add a note that file context was requested
+                file_context = f"\n--- File Context from {uploaded_file_context_name} ---\n"
+                file_context += "[File context integration needs to be implemented]\n"
+                print(f"File context requested: {uploaded_file_context_name}")
+            except Exception as e:
+                print(f"Error loading file context: {e}")
+
+        # Handle special modes
+        mode_context = ""
+        if explain_active:
+            mode_context += "\n--- EXPLAIN MODE ACTIVE ---\n"
+            mode_context += "Please provide explanations for your responses and reasoning.\n"
+        
+        if tasks_active:
+            mode_context += "\n--- TASKS MODE ACTIVE ---\n"
+            mode_context += "Please generate actionable tasks based on the conversation.\n"
+            
+        if selected_alignment:
+            mode_context += f"\n--- ALIGNMENT: {selected_alignment.upper()} ---\n"
+            mode_context += f"Please respond with a {selected_alignment.lower()} approach.\n"
 
         # Query vector databases
         fw_results = vector_db_service.query_collection(
@@ -100,6 +135,9 @@ class ChatService:
         combined_context = ""
         combined_context, _ = self._add_results_to_context(fw_results, "Relevant Framework Information", combined_context)
         combined_context, _ = self._add_results_to_context(user_results, "Relevant Information From Your Documents", combined_context)
+        
+        # Add mode and file context to combined context
+        combined_context += mode_context + file_context
         
         # Langchain history should be the actual conversation flow
         # The api_history_data might be what the client *thinks* the history is.
@@ -154,6 +192,7 @@ class ChatService:
             # would be more complex, potentially based on LLM output.
             if f"Proceed to Step {current_step + 1}" in ai_response_content and current_step < 6:
                 current_step += 1
+
             if current_step == 3 and "PLANNER DEFINED:" in ai_response_content: # Example trigger
                 # Extract planner (this is a simplistic example)
                 try:

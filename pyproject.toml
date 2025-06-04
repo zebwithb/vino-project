@@ -20,3 +20,8 @@ dependencies = [
     "python-dotenv>=1.1.0",
     "reflex>=0.7.6",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.11.12",
+]
