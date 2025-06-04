@@ -15,13 +15,13 @@ import { DefaultOverlayComponents, MemoizedToastProvider } from "$/utils/compone
 
 import { EventLoopProvider, StateProvider, defaultColorMode } from "$/utils/context.js";
 import { ThemeProvider } from 'next-themes'
-import * as next_link from "next/link";
-import * as emotion_react from "@emotion/react";
-import * as radix_ui_themes from "@radix-ui/themes";
-import * as utils_components from "$/utils/components";
-import * as utils_state from "$/utils/state";
-import * as utils_context from "$/utils/context";
 import * as React from "react";
+import * as utils_components from "$/utils/components";
+import * as radix_ui_themes from "@radix-ui/themes";
+import * as utils_context from "$/utils/context";
+import * as utils_state from "$/utils/state";
+import * as emotion_react from "@emotion/react";
+import * as next_link from "next/link";
 
 
 function AppWrap({children}) {
@@ -67,13 +67,13 @@ export default function MyApp({ Component, pageProps }) {
   React.useEffect(() => {
     // Make contexts and state objects available globally for dynamic eval'd components
     let windowImports = {
-      "next/link": next_link,
-      "@emotion/react": emotion_react,
-      "@radix-ui/themes": radix_ui_themes,
-      "$/utils/components": utils_components,
-      "$/utils/state": utils_state,
-      "$/utils/context": utils_context,
       "react": React,
+      "$/utils/components": utils_components,
+      "@radix-ui/themes": radix_ui_themes,
+      "$/utils/context": utils_context,
+      "$/utils/state": utils_state,
+      "@emotion/react": emotion_react,
+      "next/link": next_link,
     };
     window["__reflex"] = windowImports;
   }, []);

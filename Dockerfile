@@ -16,8 +16,21 @@ COPY . .
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
 
+# Expose ports for Reflex frontend and FastAPI backend
+EXPOSE 3000 8000
+
 # Reset the entrypoint, don't invoke `uv`
 ENTRYPOINT []
 
-# Run the FastAPI application by default
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Create a startup script to run both services
+RUN echo '#!/bin/bash\n\
+# Start FastAPI backend\n\
+uvicorn src.app.main:app --host 0.0.0.0 --port 8000 &\n\
+\n\
+# Start Reflex frontend\n\
+reflex run --app reflex_ui.app --frontend-host 0.0.0.0 --frontend-port 3000 &\n\
+\n\
+# Wait for both processes\n\
+wait' > /app/start.sh && chmod +x /app/start.sh
+
+CMD ["/app/start.sh"]
