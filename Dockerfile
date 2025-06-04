@@ -22,15 +22,5 @@ EXPOSE 3000 8000
 # Reset the entrypoint, don't invoke `uv`
 ENTRYPOINT []
 
-# Create a startup script to run both services
-RUN echo '#!/bin/bash\n\
-# Start FastAPI backend\n\
-uvicorn src.app.main:app --host 0.0.0.0 --port 8000 &\n\
-\n\
-# Start Reflex frontend\n\
-reflex run --app reflex_ui.app --frontend-host 0.0.0.0 --frontend-port 3000 &\n\
-\n\
-# Wait for both processes\n\
-wait' > /app/start.sh && chmod +x /app/start.sh
-
-CMD ["/app/start.sh"]
+# Run both services - FastAPI backend and Reflex frontend
+CMD ["sh", "-c", "cd src && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 & cd /app/reflex_ui && uv run reflex run --frontend-host 0.0.0.0 --frontend-port 3000 & wait"]

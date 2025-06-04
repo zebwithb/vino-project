@@ -4,7 +4,7 @@ from typing import Optional
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from .matrix_definitions import UNIVERSAL_MATRIX_STEPS, SIMPLIFIED_UNIVERSAL_MATRIX_STEPS
+from .matrix_definitions import SIMPLIFIED_UNIVERSAL_MATRIX_STEPS
 from .templates import (
     BASE_SYSTEM_PROMPT,
     STEP_SPECIFIC_SYSTEM_PROMPT_TEMPLATE,

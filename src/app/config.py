@@ -23,9 +23,9 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 # --- API KEYS ---
-raw_google_api_key = os.getenv("GEMINI_KEY_API")
+raw_google_api_key = os.getenv("GOOGLE_API_KEY")
 if not raw_google_api_key:
-    raise ValueError("API key not found. Please set the GEMINI_KEY_API environment variable.")
+    raise ValueError("API key not found. Please set the GOOGLE_API_KEY environment variable.")
 GOOGLE_API_KEY: SecretStr = SecretStr(raw_google_api_key) # Wrap the key in SecretStr
 
 # --- LLM ---
