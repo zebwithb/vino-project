@@ -82,3 +82,17 @@ class FileInfo(BaseModel):
 class FileListResponse(BaseModel):
     """Response model for listing uploaded files."""
     files: List[FileInfo] # Using a structured FileInfo model
+
+class HealthResponse(BaseModel):
+    status: str
+    uptime: float
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "status": "ok",
+                "uptime": 123.45
+            }
+        }
+
+

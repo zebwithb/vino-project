@@ -23,7 +23,7 @@ import PyPDF2
 from typing import Tuple, Optional, List
 
 from app import config
-from app.models import ProcessingResult, DocumentMetadata
+from app.schemas.models import ProcessingResult, DocumentMetadata
 
 def extract_text_from_pdf(pdf_path: str) -> str:
     """

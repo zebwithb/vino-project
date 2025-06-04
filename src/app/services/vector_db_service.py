@@ -22,7 +22,7 @@ import chromadb.utils.embedding_functions as embedding_functions
 from typing import List, Dict, Any, Optional
 
 from app import config
-from app.models import ProcessingResult
+from app.schemas.models import ProcessingResult
 from app.services.document_service import load_docs_from_directory_to_list
 
 class VectorDBService:

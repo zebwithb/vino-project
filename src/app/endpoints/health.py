@@ -2,7 +2,7 @@ import time
 
 from fastapi import APIRouter
 
-from ..schemas.text import HealthResponse
+from ..schemas.models import HealthResponse
 
 router = APIRouter(tags=["health"])
 start_time = time.time()

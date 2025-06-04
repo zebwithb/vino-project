@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Body
 from typing import Dict, Any
-from ..models import QueryRequest as ChatResponse, QueryResponse as ChatRequest
+from ..schemas.models import QueryRequest as ChatResponse, QueryResponse as ChatRequest
 # Import the instance of ChatService
 from ..services.chat_service import chat_service
 

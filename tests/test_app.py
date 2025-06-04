@@ -59,7 +59,7 @@ def test_split_text_recursively_happy_path():
     # chunks = split_text_recursively_equivalent_test_target(text, chunk_size=chunk_size, chunk_overlap=10)
     
     # If testing process_document_content directly:
-    from app.models import ProcessingResult
+    from app.schemas.models import ProcessingResult
     from app.services.document_service import process_document_content
     
     # Simulate calling process_document_content
