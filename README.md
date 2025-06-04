@@ -21,7 +21,7 @@ A FastAPI-based document processing and semantic search application that combine
 
 ## Project Structure
 
-```
+```plaintext
 vino-project/
 ├── src/app/
 │   ├── config.py              # Configuration management
@@ -49,12 +49,14 @@ vino-project/
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd vino-project
    ```
 
 2. **Create virtual environment**
+
    ```bash
    python -m venv venv
    # Windows
@@ -64,12 +66,14 @@ vino-project/
    ```
 
 3. **Install dependencies**
+
    ```bash
    pip install -r requirements.txt
    ```
 
 4. **Set up environment variables**
    Create a `.env` file in the project root:
+
    ```env
    GEMINI_KEY_API=your_google_api_key_here
    
@@ -82,6 +86,7 @@ vino-project/
 ### Running the Application
 
 #### Local Mode (Default)
+
 ```bash
 # Start the FastAPI application
 python -m uvicorn src.app.main:app --reload
@@ -91,6 +96,7 @@ python -m uvicorn src.app.main:app --reload
 ```
 
 #### Docker Mode (ChromaDB Server)
+
 ```bash
 # Start ChromaDB container
 docker-compose up -d chromadb
@@ -104,13 +110,15 @@ python -m uvicorn src.app.main:app --reload
 
 ### Document Management
 
-
+TO DO
 
 ### Search & Query
+
 - `POST /query` - Semantic search across documents
 - `POST /chat` - Interactive Q&A with document context
 
 ### Health & Status
+
 - `GET /health/chromadb` - Check ChromaDB connection status
 
 ## Configuration
@@ -127,6 +135,7 @@ Key configuration options in `src/app/config.py`:
 ## Usage Examples
 
 ### Upload a Document
+
 ```bash
 curl -X POST "http://localhost:8000/upload" \
   -H "Content-Type: multipart/form-data" \
@@ -134,6 +143,7 @@ curl -X POST "http://localhost:8000/upload" \
 ```
 
 ### Search Documents
+
 ```bash
 curl -X POST "http://localhost:8000/query" \
   -H "Content-Type: application/json" \
@@ -145,6 +155,7 @@ curl -X POST "http://localhost:8000/query" \
 ```
 
 ### Interactive Chat
+
 ```bash
 curl -X POST "http://localhost:8000/chat" \
   -H "Content-Type: application/json" \
@@ -156,17 +167,21 @@ curl -X POST "http://localhost:8000/chat" \
 ## Development
 
 ### Adding Framework Documentation
+
 Place PDF or text files in the `data/framework_docs/` directory. They will be automatically loaded when the application starts.
 
 ### Extending File Support
+
 Add new file type handlers in `src/app/services/document_service.py` in the `load_single_document()` function.
 
 ### Custom Embeddings
+
 Replace the Google Generative AI embedding function in `src/app/services/vector_db_service.py` with your preferred embedding model.
 
 ## Deployment
 
 ### Production Considerations
+
 - Use environment variables for all sensitive configuration
 - Configure proper CORS origins for your frontend
 - Set up proper logging and monitoring
@@ -174,6 +189,7 @@ Replace the Google Generative AI embedding function in `src/app/services/vector_
 - Implement rate limiting and authentication as needed
 
 ### Docker Deployment
+
 ```bash
 # Build and run with Docker Compose
 docker-compose up -d
@@ -185,12 +201,14 @@ docker-compose up -d chromadb
 ## Troubleshooting
 
 ### Common Issues
+
 - **ChromaDB Connection**: Check that the ChromaDB server is running if using server mode
 - **API Key**: Ensure your Google Generative AI API key is properly set
 - **File Uploads**: Verify the upload directory exists and has write permissions
 - **PDF Processing**: Some PDFs may not extract text properly; consider OCR solutions for scanned documents
 
 ### Debugging
+
 Enable debug logging by setting the log level in your environment or configuration.
 
 ## Contributing

@@ -1,11 +1,10 @@
 from fastapi import APIRouter, HTTPException, Body
 from typing import Dict, Any
-from ..schemas.models import QueryRequest as ChatResponse, QueryResponse as ChatRequest
-# Import the instance of ChatService
+from ..schemas.models import QueryRequest as ChatRequest, QueryResponse as ChatResponse
 from ..services.chat_service import chat_service
 
 router = APIRouter(
-    prefix="/v1/chat", # Consistent with Reflex frontend expectation
+    prefix="/v1/chat",
     tags=["Chat"]
 )
 
