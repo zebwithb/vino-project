@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "asyncio>=3.4.3",
     "chromadb>=1.0.4",
+    "fastapi[standard]>=0.115.9",
     "google-genai>=1.10.0",
     "google-generativeai>=0.8.4",
     "langchain>=0.3.23",

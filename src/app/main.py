@@ -1,3 +1,4 @@
+import chromadb
 import time
 import os
 import uuid
@@ -146,4 +147,19 @@ async def health():
         status="ok",
         uptime=time.time() - start_time
     )
-    
+
+def connect_to_chroma():
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            client = chromadb.HttpClient(host="chromadb", port=8000)
+            client.heartbeat()  # Test connection
+            return client
+        except Exception as e:
+            print(f"ChromaDB connection attempt {attempt + 1} failed: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(5)
+            else:
+                raise
+
+chroma_client = connect_to_chroma()

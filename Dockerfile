@@ -1,26 +1,65 @@
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+# ── STAGE 1: build your app and venv ────────────────────────────────────────
+FROM python:3.12-slim-bookworm AS builder
 
+ARG uv=/root/.local/bin/uv
+
+RUN apt-get update && apt-get install -y unzip curl wget && rm -rf /var/lib/apt/lists/*
+
+# Install `uv` for faster package bootstrapping
+ADD --chmod=755 https://astral.sh/uv/install.sh /install.sh
+RUN /install.sh && rm /install.sh
+
+# Install system dependencies
+
+# Copy local context to `/app` inside container
 WORKDIR /app
+COPY . .
 
+# Create virtualenv which will be copied into final container
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 
-# Install dependencies using uv and lockfile for reproducibility
-COPY pyproject.toml uv.lock ./
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+RUN $uv venv
 
-# Copy the rest of the application code
-COPY . .
+# Install dependencies using uv with lock file
+RUN $uv sync --locked
 
-# Place executables in the environment at the front of the path
+# Switch to src folder and sync backend dependencies
+WORKDIR /app/src
+RUN $uv sync --locked
+
+# Deploy templates and prepare app
+WORKDIR /app/reflex_ui
+RUN reflex init
+
+# Export static copy of frontend
+RUN reflex export --frontend-only --no-zip
+
+# ── STAGE 2: runtime ───────────────────────────────────────────────────────
+FROM python:3.12-slim-bookworm
+
+WORKDIR /app
+
+# Copy built application from builder stage
+COPY --from=builder /app /app
+
+# Install runtime dependencies if needed
+RUN apt-get update && apt-get install -y curl unzip  && rm -rf /var/lib/apt/lists/*
+
 ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
 
-# Expose ports for Reflex frontend and FastAPI backend
+# Needed until Reflex properly passes SIGTERM on backend
+STOPSIGNAL SIGKILL
+
+WORKDIR /app/reflex_ui
+
 EXPOSE 3000 8000
 
-# Reset the entrypoint, don't invoke `uv`
-ENTRYPOINT []
+# Always apply migrations before starting the backend
+CMD [ -d alembic ] && reflex db migrate; \
+    exec reflex run --env prod --loglevel debug
 
-# Run both services - FastAPI backend and Reflex frontend
-CMD ["sh", "-c", "cd src && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 & cd /app/reflex_ui && uv run reflex run --frontend-host 0.0.0.0 --frontend-port 3000 & wait"]
+

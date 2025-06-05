@@ -1,42 +1,64 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis
+    networks:
+      - app-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"  # Frontend
+      - "8000:8000"  # FastAPI Backend
+    depends_on:
+      - redis
+      - chromadb
+    networks:
+      - app-network
+      
   chromadb:
     image: chromadb/chroma:latest
     ports:
-      - "8001:8000"
+      - "8001:8001"  
     volumes:
       - chromadb_data:/chroma/chroma
     environment:
       - CHROMA_SERVER_HOST=0.0.0.0
-      - CHROMA_SERVER_HTTP_PORT=8000
-      - CHROMA_SERVER_CORS_ALLOW_ORIGINS=["http://localhost:8000"]
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+      - CHROMA_SERVER_HTTP_PORT=8001
     networks:
       - app-network
 
-  api:
-    build: .
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.reflex
     ports:
-      - "8000:8000"
+      - "3000:3000"
+    depends_on:
+      - fastapi
+      - redis
+      - chromadb
     environment:
-      - GEMINI_KEY_API=${GEMINI_KEY_API}
-      - CHROMA_SERVER_HOST=chromadb
-      - CHROMA_SERVER_PORT=8000
-    volumes:
-      - ./src:/app/src
+      - FASTAPI_URL=http://fastapi:80  # Internal Docker network URL
+      - API_BASE_URL=http://localhost:8000  # External URL for client-side requests
+    networks:
+      - app-network
+
+  fastapi:
+    build:
+      context: ./src
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
     depends_on:
       chromadb:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    environment:
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8001
     networks:
       - app-network
 

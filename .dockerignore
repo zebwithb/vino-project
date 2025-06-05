@@ -9,8 +9,6 @@ documents/
 
 # Python cache
 __pycache__/
-*.py[cod]
-*$py.class
 *.so
 .Python
 build/
@@ -30,8 +28,6 @@ wheels/
 *.egg
 
 # Virtual environments
-.venv
-venv/
 env.bak/
 venv.bak/
 
@@ -74,10 +70,6 @@ Dockerfile*
 docker-compose*.yml
 .dockerignore
 
-# Reflex specific
-reflex_ui/uploaded_files/
-reflex_ui/__pycache__/
-reflex_ui/.web/
 
 # Node.js (if any)
 node_modules/
