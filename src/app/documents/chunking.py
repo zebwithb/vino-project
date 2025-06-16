@@ -418,12 +418,12 @@ def process_documents(root_dir: str = ROOT_DIR,
                     all_chunk_data.extend(chunk_data)
                     processed_files += 1
                 except Exception as e:
-                    print(f"Error processing file {full_path}: {e}")
+                    logger.error(f"Error processing file {full_path}: {e}")
             elif DEBUG_MODE:
-                print(f"Skipping file (wrong type): {os.path.join(directory, file)}")
-    
-    print(f"Processed {processed_files} files, created {len(all_chunk_data)} chunks")
-    
+                logger.info(f"Skipping file (wrong type): {os.path.join(directory, file)}")
+
+    logger.info(f"Processed {processed_files} files, created {len(all_chunk_data)} chunks")
+
     if DEBUG_MODE:
         _print_debug_chunks(all_chunk_data)
     
@@ -433,32 +433,27 @@ def process_documents(root_dir: str = ROOT_DIR,
 def _print_debug_chunks(chunks: List[DocumentChunk]) -> None:
     """Print detailed information about chunks for debugging."""
     for i, chunk in enumerate(chunks, 1):
-        print(f"\n{'='*60}")
-        print(f"CHUNK {i}")
-        print(f"{'='*60}")
-        print(f"Doc ID: {chunk.metadata.doc_id}")
-        print(f"Section: {chunk.metadata.section}")
-        print(f"Chunk Number: {chunk.metadata.chunk_number}")
-        print(f"Token Length: {chunk.metadata.chunk_length}")
-        print(f"{'-'*60}")
-        print("TEXT:")
-        print(f"{'-'*60}")
-        print(chunk.text)
-        print(f"{'='*60}\n")
+        logger.info(f"CHUNK {i}")
+        logger.info(f"Doc ID: {chunk.metadata.doc_id}")
+        logger.info(f"Section: {chunk.metadata.section}")
+        logger.info(f"Chunk Number: {chunk.metadata.chunk_number}")
+        logger.info(f"Token Length: {chunk.metadata.chunk_length}")
+        logger.info(f"TEXT:")
+        logger.info(chunk.text)
 
 def main() -> None:
     """
     Main function to process documents and display results.
+    Executed when the script is run directly.
+    This function handles the overall processing flow and error handling.
     """
     try:
         result = process_documents()
-        print("\n" + "="*50)
-        print("PROCESSING COMPLETE")
-        print("="*50)
-        print(f"Successfully processed {len(result)} chunks")
-        
+        logger.info("Processing complete")
+        logger.info(f"Successfully processed {len(result)} chunks")
+
     except Exception as e:
-        print(f"Error in main processing: {e}")
+        logger.error(f"Error in main processing: {e}")
         raise
 
 
