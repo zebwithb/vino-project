@@ -14,18 +14,26 @@ Features:
 
 import os
 import re
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from pathlib import Path
+import logging
 
-import pypandoc
+try:
+    import pypandoc
+except ImportError:
+    pypandoc = None
+
 import tiktoken
 from dotenv import load_dotenv
 
 from app.schemas.models import DocumentChunk, DocumentMetadata
-from chunking_config import *
+from app.documents.chunking_config import *
 
 # Load environment variables
 load_dotenv()
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 DEBUG_MODE = False  # Set to True to show debug output
 
@@ -53,8 +61,16 @@ def read_doc(path: str) -> Tuple[str, str]:
         A tuple containing (table_of_contents, full_text)
         
     Raises:
+        FileNotFoundError: If the file doesn't exist
+        ValueError: If pypandoc is not available or file format is unsupported
         Exception: If the file cannot be processed by pypandoc
     """
+    if not Path(path).exists():
+        raise FileNotFoundError(f"File not found: {path}")
+    
+    if pypandoc is None:
+        raise ValueError("pypandoc is required but not installed. Please install it with: pip install pypandoc")
+    
     try:
         doc = str(pypandoc.convert_file(
             path, 'plain', format='md', 
@@ -75,9 +91,10 @@ def read_doc(path: str) -> Tuple[str, str]:
         return toc, text
     
     except Exception as e:
+        logger.error(f"Error processing file {path}: {e}")
         if DEBUG_MODE:
             print(f"Error processing file {path}: {e}")
-        return "", ""
+        raise
 
 def cleanup_plaintext(text: str) -> str:
     """
@@ -174,65 +191,82 @@ def process_single_file(file_path: str) -> List[DocumentChunk]:
         
     Returns:
         List of DocumentChunk objects containing chunk data and metadata
+        
+    Raises:
+        FileNotFoundError: If the file doesn't exist
+        ValueError: If the file is empty or unsupported format
     """
+    if not file_path or not isinstance(file_path, str):
+        raise ValueError("file_path must be a non-empty string")
+    
     file_path_obj = Path(file_path)
+    if not file_path_obj.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+    
     filename = file_path_obj.stem
     
     if DEBUG_MODE:
         print(f"Processing file: {file_path}")
     
-    # Extract TOC and text
-    toc, text = read_doc(file_path)
-    if not text and DEBUG_MODE:
-        print(f"  Warning: No text extracted from {file_path}")
-        return []
-    
-    if DEBUG_MODE:
-        print(f"  TOC length: {len(toc)}, Text length: {len(text)}")
-    
-    # Clean the text
-    text_cleaned = cleanup_plaintext(text)
-    if DEBUG_MODE:
-        print(f"  Cleaned text length: {len(text_cleaned)}")
-    
-    # Split into chunks
-    text_chunks = split_text(toc, text_cleaned)
-    if DEBUG_MODE:
-        print(f"  Number of chunks before oversized splitting: {len(text_chunks)}")
-        if not text_chunks:
-            print(f"    No chunks generated for {file_path}")
+    try:
+        # Extract TOC and text
+        toc, text = read_doc(file_path)
+        if not text:
+            logger.warning(f"No text extracted from {file_path}")
+            if DEBUG_MODE:
+                print(f"  Warning: No text extracted from {file_path}")
+            return []
+        
+        if DEBUG_MODE:
+            print(f"  TOC length: {len(toc)}, Text length: {len(text)}")
+        
+        # Clean the text
+        text_cleaned = cleanup_plaintext(text)
+        if DEBUG_MODE:
+            print(f"  Cleaned text length: {len(text_cleaned)}")
+        
+        # Split into chunks
+        text_chunks = split_text(toc, text_cleaned)
+        if DEBUG_MODE:
+            print(f"  Number of chunks before oversized splitting: {len(text_chunks)}")
+            if not text_chunks:
+                print(f"    No chunks generated for {file_path}")
 
-    # Apply oversized chunk splitting
-    final_chunks = []
-    for chunk in text_chunks:
-        split_chunks = split_oversized_chunk(chunk, MAX_CHUNK_TOKENS)
-        final_chunks.extend(split_chunks)
-    
-    if DEBUG_MODE:
-        print(f"  Number of chunks after oversized splitting: {len(final_chunks)}")
-    
-    # Initialize TikToken for chunk length calculation
-    encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
-    
-    # Create list of DocumentChunk objects
-    document_chunks = []
-    for chunk_number, chunk in enumerate(final_chunks, 1):
-        tokens = encoding.encode(chunk)
-        section_name = chunk.split("[SEP]")[0].strip() if "[SEP]" in chunk else "No Heading"
+        # Apply oversized chunk splitting
+        final_chunks = []
+        for chunk in text_chunks:
+            split_chunks = split_oversized_chunk(chunk, MAX_CHUNK_TOKENS)
+            final_chunks.extend(split_chunks)
         
-        # Create DocumentMetadata object
-        metadata = DocumentMetadata(
-            doc_id=f"{filename}_{chunk_number}",
-            chunk_number=chunk_number,
-            chunk_length=len(tokens),
-            section=section_name
-        )
+        if DEBUG_MODE:
+            print(f"  Number of chunks after oversized splitting: {len(final_chunks)}")
         
-        # Create DocumentChunk object
-        doc_chunk = DocumentChunk(metadata=metadata, text=chunk)
-        document_chunks.append(doc_chunk)
+        # Initialize TikToken for chunk length calculation
+        encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+        
+        # Create list of DocumentChunk objects
+        document_chunks = []
+        for chunk_number, chunk in enumerate(final_chunks, 1):
+            tokens = encoding.encode(chunk)
+            section_name = chunk.split("[SEP]")[0].strip() if "[SEP]" in chunk else "No Heading"
+            
+            # Create DocumentMetadata object
+            metadata = DocumentMetadata(
+                doc_id=f"{filename}_{chunk_number}",
+                chunk_number=chunk_number,
+                chunk_length=len(tokens),
+                section=section_name
+            )
+            
+            # Create DocumentChunk object
+            doc_chunk = DocumentChunk(metadata=metadata, text=chunk)
+            document_chunks.append(doc_chunk)
+        
+        return document_chunks
     
-    return document_chunks
+    except Exception as e:
+        logger.error(f"Error processing file {file_path}: {e}")
+        raise
 
 def split_oversized_chunk(chunk_text: str, max_tokens: int = MAX_CHUNK_TOKENS) -> List[str]:
     """

@@ -6,12 +6,16 @@ and environment-specific customization.
 """
 
 import os
+import logging
 from typing import List
 from pathlib import Path
 import re
 
+# Set up logging
+logger = logging.getLogger(__name__)
+
 # Environment settings
-DEBUG_MODE = os.getenv('CHUNKING_DEBUG', 'TRUE').lower() == 'true'
+DEBUG_MODE = os.getenv('CHUNKING_DEBUG', 'FALSE').lower() == 'true'
 
 # Directory settings
 
