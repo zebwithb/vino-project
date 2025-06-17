@@ -8,17 +8,21 @@ RUN apt-get update && apt-get install -y curl unzip  && rm -rf /var/lib/apt/list
 ADD --chmod=755 https://astral.sh/uv/install.sh /install.sh
 RUN /install.sh && rm /install.sh
 
+# Set the working directory in the image
 WORKDIR /app
 
 COPY . .
 
-# Create virtualenv in /app/.venv and install dependencies from /app/pyproject.toml
+# Create virtualenv in /app/.venv
 ENV VIRTUAL_ENV=/app/.venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 RUN $uv venv $VIRTUAL_ENV
-RUN $uv sync --locked
+
+# Install dependencies from /app/requirements.txt
+RUN $uv pip install -r requirements.txt
 
 EXPOSE 8000
 
 # Start the FastAPI application using uvicorn
+# The WORKDIR is /app. Python will find the 'app' package at /app/app.
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
