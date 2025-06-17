@@ -1,43 +1,66 @@
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
+from enum import Enum
 
 # --- Document Processing Models (Primarily for internal use by services) ---
+class FileType(str, Enum):
+    PDF = "pdf"
+    DOCX = "docx"
+    TXT = "txt"
+    MD = "md"
+    
 class DocumentMetadata(BaseModel):
     """Metadata for a document chunk, often used for vector DBs."""
-    source: str  # e.g., path or URL of the original document
-    filename: str # Original filename
+    doc_id: str
     chunk_index: int # Renamed from 'chunk' for clarity
-    # Add other relevant metadata like page_number, etc.
+    chunk_length: int # Length of the text chunk
+    section: Optional[str] = None 
 
 class DocumentChunk(BaseModel):
     """Represents a processed chunk of a document ready for embedding/storage."""
-    id: str # Unique ID for the chunk
-    text: str # The actual text content of the chunk
-    metadata: DocumentMetadata # Associated metadata
+    metadata: DocumentMetadata
+    text: str = Field(..., min_length=1)
+
+class FileMetadata(BaseModel):
+    """Information about a single listed file."""
+    # Add other relevant info, e.g., size, upload_date, processing_status
+    chunks_in_db: Optional[int] = None 
+    status: Optional[str] = None
+    source: str = Field(..., min_length=1)
+    filename: str = Field(..., min_length=1)
+    file_size: int = Field(..., ge=0)
+    file_type: FileType
+    page_count: int
+    file_word_count: int
+    file_char_count: int
+    keywords: List[str]
+    abstract: str
+
 
 class ProcessingResult(BaseModel):
     """
     Results from processing a document, potentially for internal service use
     or a detailed response from a document processing endpoint.
     """
+    chunk_all_texts: List[str] = Field(default_factory=list, description="List of text from chunks")
+    chunk_ids: List[str] = Field(default_factory=list, description="chunk_ids for ChromaDB")
+
+    doc_metadatas: List[DocumentMetadata] = Field(default_factory=list)
+    file_metadatas: List[FileMetadata] = Field(default_factory=list, description="Metadata for ChromaDB")
+    chunk_count:  int = Field(default=0, ge=0)
     
-    filename: str
-    documents_processed_texts: List[str] = Field(default_factory=list, description="List of text from chunks")
-    metadatas_for_db: List[Dict[str, Any]] = Field(default_factory=list, description="Metadata for ChromaDB")
-    ids_for_db: List[str] = Field(default_factory=list, description="IDs for ChromaDB")
-    chunk_count: int = 0
     message: Optional[str] = None
     
     @classmethod
-    def create_empty(cls, filename: str) -> 'ProcessingResult':
+    def create_empty(cls) -> 'ProcessingResult':
         """Create an empty ProcessingResult with just the filename."""
         return cls(
-            filename=filename,
-            documents_processed_texts=[],
-            metadatas_for_db=[],
-            ids_for_db=[],
+            chunk_all_texts=[],
+            doc_metadatas=[],
+            chunk_ids=[],
             chunk_count=0
         )
+        
 
 
 # --- API Request/Response Models ---
@@ -72,16 +95,9 @@ class UploadResponse(BaseModel): # For file upload operations
     detail: Optional[str] = None # More specific detail, e.g. from processing
     chunks_added: Optional[int] = 0 # If applicable and known at upload time
 
-class FileInfo(BaseModel):
-    """Information about a single listed file."""
-    filename: str
-    # Add other relevant info, e.g., size, upload_date, processing_status
-    chunks_in_db: Optional[int] = None 
-    status: Optional[str] = None
-
 class FileListResponse(BaseModel):
     """Response model for listing uploaded files."""
-    files: List[FileInfo] # Using a structured FileInfo model
+    files: List[FileMetadata] # Using a structured FileMetadata model
 
 class HealthResponse(BaseModel):
     status: str
