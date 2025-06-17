@@ -4,13 +4,13 @@ Document Processing Service Module
 
 import os
 from typing import List
+import tiktoken
 
-from app.config import SUPPORTED_EXTENSIONS, DEBUG_MODE
+from app.config import SUPPORTED_EXTENSIONS, ENCODING_MODEL, MAX_CHUNK_TOKENS, OVERLAP_TOKENS, DEBUG_MODE
 from app.schemas.models import ProcessingResult, DocumentMetadata
 
 from app.services.chunking_service import chunk_single_file
 from app.services.metadata_service import create_file_metadata
-from app.services.ingestion_service import _process_with_fixed_size_chunking
 
 
 
@@ -131,6 +131,85 @@ def _process_with_simple_chunking(file_path: str, content: str, page_count: int,
     print(f"Processed 1 chunk (full document) from {file_name}")
     return result
 
+
+def _process_with_fixed_size_chunking(file_path: str, content: str, page_count: int, 
+                                    source: str, max_tokens: int = MAX_CHUNK_TOKENS, 
+                                    overlap_tokens: int = OVERLAP_TOKENS) -> ProcessingResult:
+    """
+    Process document using fixed-size chunking strategy based on tokens.
+    
+    Args:
+        file_path: Path to the source document
+        content: Text content of the document
+        page_count: Number of pages in the document
+        source: Source identifier for the document
+        max_tokens: Maximum tokens per chunk
+        overlap_tokens: Number of tokens to overlap between chunks
+        
+    Returns:
+        ProcessingResult with fixed-size chunking applied
+    """
+    result = ProcessingResult()
+    file_name = os.path.basename(file_path)
+    doc_id_base = os.path.splitext(file_name)[0]
+    
+    # Initialize tokenizer
+    try:
+        encoding = tiktoken.encoding_for_model(ENCODING_MODEL)
+    except Exception:
+        # Fallback to a default encoding if model not found
+        encoding = tiktoken.get_encoding("cl100k_base")
+    
+    # Create file metadata once for the entire document
+    file_metadata = create_file_metadata(file_path, content, page_count, source)
+    
+    # Tokenize the entire content
+    tokens = encoding.encode(content)
+    total_tokens = len(tokens)
+    
+    if total_tokens == 0:
+        print(f"Warning: No tokens found in {file_name}")
+        return result
+    
+    print(f"Processing {file_name}: {total_tokens} tokens total")
+    
+    # Implement token-based fixed-size chunking
+    start_token = 0
+    chunk_number = 1
+    
+    while start_token < total_tokens:
+        # Calculate end token for this chunk
+        end_token = min(start_token + max_tokens, total_tokens)
+        
+        # Extract chunk tokens and decode back to text
+        chunk_tokens = tokens[start_token:end_token]
+        chunk_text = encoding.decode(chunk_tokens)
+        
+        # Skip empty chunks
+        if not chunk_text.strip():
+            start_token += max_tokens - overlap_tokens
+            continue
+        
+        # Create DocumentMetadata object
+        doc_metadata = DocumentMetadata(
+            doc_id=f"{doc_id_base}_chunk_{chunk_number}",
+            chunk_index=chunk_number,
+            chunk_length=len(chunk_tokens),  # Store token count instead of character count
+            section=f"Chunk {chunk_number}"
+        )
+        
+        result.chunk_all_texts.append(chunk_text)
+        result.doc_metadatas.append(doc_metadata)
+        result.file_metadatas.append(file_metadata)
+        result.chunk_ids.append(f"{doc_id_base}_chunk_{chunk_number}")
+        
+        # Move to next chunk with overlap
+        start_token += max_tokens - overlap_tokens
+        chunk_number += 1
+    
+    print(f"Successfully processed {len(result.chunk_all_texts)} token-based chunks from {file_name}")
+    print(f"Average tokens per chunk: {total_tokens / len(result.chunk_all_texts):.0f}")
+    return result
 
 def _print_debug_info(file_name: str, result: ProcessingResult, file_path: str, 
                      page_count: int) -> None:

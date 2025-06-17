@@ -97,11 +97,16 @@ def create_file_metadata(file_path: str, content: str, page_count: int,
     abstract = generate_abstract(content)
     file_extension = os.path.splitext(file_path)[1].lstrip('.').lower()
     
+    try:
+        file_type_enum = FileType(file_extension)
+    except ValueError:
+        raise ValueError(f"Unsupported file type: {file_extension}")
+    
     return FileMetadata(
         source=source,
         filename=file_name,
         file_size=file_size,
-        file_type=file_extension,
+        file_type=file_type_enum,
         page_count=page_count,
         file_word_count=word_count,
         file_char_count=char_count,
