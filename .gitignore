@@ -4,3 +4,7 @@
 *__pycache__*
 .venv
 /.ruff_cache
+/.web
+/chromadb/chroma.sqlite3
+/reflex_ui/.web
+/reflex_ui/.states
