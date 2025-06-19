@@ -26,10 +26,6 @@ RUN $uv venv
 # Install dependencies using uv with lock file
 RUN $uv sync --locked
 
-# Switch to src folder and sync backend dependencies
-WORKDIR /app/src
-RUN $uv sync --locked
-
 # Deploy templates and prepare app
 WORKDIR /app/reflex_ui
 RUN reflex init
