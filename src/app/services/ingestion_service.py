@@ -4,10 +4,8 @@ import glob
 from typing import List, Tuple, Optional
 
 from app.core.config import settings
-from app.schemas.models import ProcessingResult, DocumentMetadata
 from app.services.extraction_service import extract_text_from_file
 from app.services.document_service import process_document_content, _print_debug_info
-from app.services.metadata_service import create_file_metadata
 from app.services.vector_db_service import VectorDBService
 from app.services.supabase_service import SupabaseService
 from app.services.file_system_service import FileSystemService

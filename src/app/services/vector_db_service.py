@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional
 
 import chromadb
 import chromadb.utils.embedding_functions as embedding_functions

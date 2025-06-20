@@ -1,5 +1,5 @@
 """Supabase Service - Pure Supabase client operations."""
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any
 
 from app.core.config import settings
 
@@ -111,14 +111,10 @@ class SupabaseService:
                 metadata_id = metadata_response.data[0]['id']
                 
                 # Insert full document content into the largeobject table
-                content_response = (
-                    self.client.table("largeobject")
-                    .insert({
-                        "oid": metadata_id,
-                        "plain_text": full_document
-                    })
-                    .execute()
-                )
+                self.client.table("largeobject").insert({
+                    "oid": metadata_id,
+                    "plain_text": full_document
+                }).execute()
                 
                 uploaded_count += 1
                 print(f"Uploaded document: {filename} ({len(chunks)} chunks combined)")
@@ -154,7 +150,7 @@ class SupabaseService:
             file_name = os.path.basename(file_path)
             
             with open(file_path, 'rb') as f:
-                response = self.client.storage.from_(bucket_name).upload(file_name, f)
+                self.client.storage.from_(bucket_name).upload(file_name, f)
             
             # Check if upload was successful - Supabase typically returns success or throws exception
             print(f"Successfully uploaded: {file_name}")

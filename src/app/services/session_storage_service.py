@@ -1,10 +1,8 @@
 """Session Storage Service - Handles persistent chat session state."""
-import json
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 
-from app.core.config import settings
 from app.services.supabase_service import SupabaseService
 
 

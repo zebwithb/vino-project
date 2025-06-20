@@ -3,7 +3,6 @@ Document Processing Service Module
 """
 
 import os
-from typing import List
 import tiktoken
 
 from app.core.config import settings

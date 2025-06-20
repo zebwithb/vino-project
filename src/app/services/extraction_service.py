@@ -3,7 +3,7 @@
 
 import PyPDF2
 
-from typing import List, Tuple
+from typing import Tuple
 from app.core.config import settings
 
 def extract_text_from_pdf(pdf_path: str) -> Tuple[str, int]:

@@ -1,10 +1,8 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional
 import os
-import uuid
 
-from app.schemas.models import QueryRequest, QueryResponse, UploadResponse, FileListResponse
+from app.schemas.models import FileListResponse
 from app.services.chat_service import ChatService
 from app.services.vector_db_service import VectorDBService
 from app.services.ingestion_service import IngestionService
@@ -172,7 +170,7 @@ async def cleanup_old_sessions(
     try:
         deleted_count = session_storage_service.cleanup_old_sessions(days_old)
         return {
-            "message": f"Cleanup completed",
+            "message": "Cleanup completed",
             "deleted_sessions": deleted_count,
             "days_threshold": days_old
         }
