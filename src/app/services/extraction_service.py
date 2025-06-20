@@ -4,7 +4,7 @@
 import PyPDF2
 
 from typing import List, Tuple
-from app.config import LINES_PER_PAGE
+from app.core.config import settings
 
 def extract_text_from_pdf(pdf_path: str) -> Tuple[str, int]:
     """
@@ -55,7 +55,7 @@ def extract_text_from_file(file_path: str) -> Tuple[str, int]:
             with open(file_path, 'r', encoding='utf-8') as file:
                 content = file.read()
                 # Estimate page count based on line count
-                page_count = max(1, len(content.splitlines()) // LINES_PER_PAGE)
+                page_count = max(1, len(content.splitlines()) // settings.LINES_PER_PAGE)
                 return content, page_count
         except Exception as e:
             print(f"Error reading text file {file_path}: {e}")

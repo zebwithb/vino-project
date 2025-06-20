@@ -196,6 +196,7 @@ class VectorDBService:
                 print(f"No documents to delete in collection '{collection_name}'.")
             
             return result
-              except Exception as e:
+        
+        except Exception as e:
             print(f"Error deleting documents from collection {collection_name}: {e}")
             return {"deleted_count": 0, "status": "error", "error": str(e)}

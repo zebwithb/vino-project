@@ -10,7 +10,8 @@ class Settings:
     def __init__(self):
         # --- PROJECT INFO ---
         self.PROJECT_NAME = "VINO API"
-        self.VERSION = "1.0.0"
+        self.PROJECT_DESCRIPTION = "VINO API for inference, document processing and vector database management"
+        self.VERSION = "1.3.0"
         
         # --- PATHS ---
         self.PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))

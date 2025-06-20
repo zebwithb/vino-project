@@ -8,13 +8,14 @@ from app.schemas.models import QueryRequest, QueryResponse, UploadResponse, File
 from app.services.chat_service import ChatService
 from app.services.vector_db_service import VectorDBService
 from app.services.ingestion_service import IngestionService
+from app.endpoints.chat import router as chat_router
 # TODO: Import these when they are implemented
 # from app.services.document_service import (
 #     store_uploaded_file,
 #     load_single_document
 # )
 from app.core.config import settings
-from app.dependencies import get_chat_service, get_vector_db_service, get_ingestion_service
+from app.dependencies import get_chat_service, get_vector_db_service, get_ingestion_service, get_session_storage_service
 
 # Function to ensure required directories exist
 def create_required_directories():
@@ -29,9 +30,9 @@ create_required_directories()
 
 # Main FastAPI application setup
 app = FastAPI(
-    title="Vino AI API",
-    description="API for Vino AI project planning assistant and document analysis.",
-    version="0.1.0"
+    title=settings.PROJECT_NAME,
+    description=settings.PROJECT_DESCRIPTION,
+    version=settings.VERSION
 )
 
 # CORS (Cross-Origin Resource Sharing)
@@ -43,36 +44,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include routers
+app.include_router(chat_router)
+
 # --- API Endpoints ---
-
-@app.post("/v1/chat", response_model=QueryResponse)
-async def chat_with_vino(
-    request: QueryRequest, 
-    session_id: Optional[str] = Form(None),
-    chat_service: ChatService = Depends(get_chat_service)
-):
-    """
-    Main endpoint for interacting with the VINO AI assistant.
-    Manages conversation state using a session_id.
-    """
-    if not session_id:
-        session_id = str(uuid.uuid4())
-
-    try:
-        response_text, updated_history, new_step, new_planner = chat_service.process_query(
-            session_id=session_id,
-            query_text=request.query_text,
-            api_history_data=request.history,
-            current_step_override=request.current_step
-        )
-        return QueryResponse(
-            response=response_text,
-            current_step=new_step,
-            planner_details=new_planner
-        )
-    except Exception as e:
-        print(f"Chat endpoint error: {e}")
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 # TODO: Implement upload document endpoint when store_uploaded_file and load_single_document are available
 # @app.post("/v1/upload_document", response_model=UploadResponse)
@@ -148,6 +123,61 @@ async def list_collections(
         return {"collections": collection_info}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error listing collections: {str(e)}")
+
+
+@app.get("/v1/admin/session/{session_id}")
+async def get_session_info(
+    session_id: str,
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    """
+    Admin endpoint: Get information about a specific chat session.
+    """
+    try:
+        session_info = chat_service.get_session_info(session_id)
+        if session_info:
+            return {"session": session_info}
+        else:
+            raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving session info: {str(e)}")
+
+
+@app.delete("/v1/admin/session/{session_id}")
+async def delete_session(
+    session_id: str,
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    """
+    Admin endpoint: Delete a specific chat session.
+    """
+    try:
+        success = chat_service.delete_session(session_id)
+        if success:
+            return {"message": f"Session {session_id} deleted successfully"}
+        else:
+            return {"message": f"Session {session_id} not found or could not be deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting session: {str(e)}")
+
+
+@app.post("/v1/admin/cleanup_sessions")
+async def cleanup_old_sessions(
+    days_old: int = 30,
+    session_storage_service = Depends(get_session_storage_service)
+):
+    """
+    Admin endpoint: Clean up sessions older than specified days.
+    """
+    try:
+        deleted_count = session_storage_service.cleanup_old_sessions(days_old)
+        return {
+            "message": f"Cleanup completed",
+            "deleted_sessions": deleted_count,
+            "days_threshold": days_old
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error during cleanup: {str(e)}")
 
 
 @app.get("/health")

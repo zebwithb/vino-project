@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body, Depends
 from ..schemas.models import QueryRequest as ChatRequest, QueryResponse as ChatResponse
-from ..services.chat_service import chat_service
+from ..services.chat_service import ChatService
+from ..dependencies import get_chat_service
 
 router = APIRouter(
     prefix="/v1/chat",
@@ -8,30 +9,25 @@ router = APIRouter(
 )
 
 @router.post("", response_model=ChatResponse) # Empty path uses the router's prefix
-async def handle_chat_request(request: ChatRequest = Body(...)):
+async def handle_chat_request(
+    request: ChatRequest = Body(...),
+    chat_service: ChatService = Depends(get_chat_service)
+):
     try:
-        # Call your existing chat_service.process_query
-        # Note: Your current chat_service.process_query signature is:
-        # process_query(self, session_id: str, query_text: str, api_history_data: List[Dict[str, Any]], current_step_override: Optional[int] = None)
-        # It returns: Tuple[str, List[Dict[str, Any]], int, Optional[str]]
-        # (ai_response_content, api_history, current_step, planner)
-
-        # TODO: You will need to modify `chat_service.process_query` to accept and utilize:
-        # - request.selected_alignment
-        # - request.explain_active
-        # - request.tasks_active
-        # - request.uploaded_file_context_name (for fetching context from the uploaded file)
-
-        ai_response_content, _, updated_current_step, planner_str = chat_service.process_query(
+        # Call the enhanced chat_service.process_query with all parameters
+        ai_response_content, updated_history, updated_current_step, planner_str = chat_service.process_query(
             session_id=request.session_id,
             query_text=request.query_text,
             api_history_data=request.history,
-            current_step_override=request.current_step
-        )
+            current_step_override=request.current_step,
+            selected_alignment=request.selected_alignment,
+            explain_active=request.explain_active,
+            tasks_active=request.tasks_active,
+            uploaded_file_context_name=request.uploaded_file_context_name        )
         
         if not ai_response_content: # Or based on some error indicator from process_query
             raise HTTPException(status_code=404, detail="Could not generate an answer.")
-        #TODO fix model parameters
+        
         return ChatResponse(
             response=ai_response_content,
             current_step=updated_current_step,

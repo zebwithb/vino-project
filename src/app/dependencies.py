@@ -4,6 +4,7 @@ from app.services.chat_service import ChatService
 from app.services.supabase_service import SupabaseService
 from app.services.file_system_service import FileSystemService
 from app.services.ingestion_service import IngestionService
+from app.services.session_storage_service import SessionStorageService
 
 # The @lru_cache decorator ensures that each function is only called once,
 # effectively creating a singleton instance of each service.
@@ -14,14 +15,22 @@ def get_vector_db_service() -> VectorDBService:
     return VectorDBService()
 
 @lru_cache()
-def get_chat_service() -> ChatService:
-    """Returns a singleton instance of the ChatService."""
-    return ChatService()
-
-@lru_cache()
 def get_supabase_service() -> SupabaseService:
     """Returns a singleton instance of the SupabaseService."""
     return SupabaseService()
+
+@lru_cache()
+def get_session_storage_service() -> SessionStorageService:
+    """Returns a singleton instance of the SessionStorageService."""
+    return SessionStorageService(supabase_service=get_supabase_service())
+
+@lru_cache()
+def get_chat_service() -> ChatService:
+    """Returns a singleton instance of the ChatService."""
+    return ChatService(
+        vector_db_service=get_vector_db_service(),
+        session_storage_service=get_session_storage_service()
+    )
 
 @lru_cache()
 def get_file_system_service() -> FileSystemService:
