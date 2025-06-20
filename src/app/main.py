@@ -1,26 +1,29 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 import os
-import uuid # For session IDs
+import uuid
 
 from app.schemas.models import QueryRequest, QueryResponse, UploadResponse, FileListResponse
-from app.services.chat_service import chat_service # Singleton instance
-from app.services.vector_db_service import vector_db_service # Singleton instance
-from app.services.document_service import (
-    store_uploaded_file,
-    load_single_document
-)
-from app import config # To access USER_UPLOADS_DIR etc.
+from app.services.chat_service import ChatService
+from app.services.vector_db_service import VectorDBService
+from app.services.ingestion_service import IngestionService
+# TODO: Import these when they are implemented
+# from app.services.document_service import (
+#     store_uploaded_file,
+#     load_single_document
+# )
+from app.core.config import settings
+from app.dependencies import get_chat_service, get_vector_db_service, get_ingestion_service
 
 # Function to ensure required directories exist
 def create_required_directories():
     """
     Ensure all required directories exist.
     """
-    os.makedirs(config.USER_UPLOADS_DIR, exist_ok=True)
-    os.makedirs(config.DOCUMENTS_DIR, exist_ok=True) # For framework documents
-    print(f"Ensured directories: {config.USER_UPLOADS_DIR}, {config.DOCUMENTS_DIR}")
+    os.makedirs(settings.USER_UPLOADS_DIR, exist_ok=True)
+    os.makedirs(settings.DOCUMENTS_DIR, exist_ok=True)
+    print(f"Ensured directories: {settings.USER_UPLOADS_DIR}, {settings.DOCUMENTS_DIR}")
 
 create_required_directories()
 
@@ -34,7 +37,7 @@ app = FastAPI(
 # CORS (Cross-Origin Resource Sharing)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allow all origins for now, restrict in production
+    allow_origins=settings.CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,84 +46,108 @@ app.add_middleware(
 # --- API Endpoints ---
 
 @app.post("/v1/chat", response_model=QueryResponse)
-async def chat_with_vino(request: QueryRequest, session_id: Optional[str] = Form(None)):
+async def chat_with_vino(
+    request: QueryRequest, 
+    session_id: Optional[str] = Form(None),
+    chat_service: ChatService = Depends(get_chat_service)
+):
     """
     Main endpoint for interacting with the VINO AI assistant.
     Manages conversation state using a session_id.
     """
     if not session_id:
-        session_id = str(uuid.uuid4()) # Generate a new session ID if not provided
+        session_id = str(uuid.uuid4())
 
     try:
         response_text, updated_history, new_step, new_planner = chat_service.process_query(
             session_id=session_id,
             query_text=request.query_text,
             api_history_data=request.history,
-            current_step_override=request.current_step # Allow client to suggest step
+            current_step_override=request.current_step
         )
         return QueryResponse(
             response=response_text,
-            history=updated_history,
             current_step=new_step,
             planner_details=new_planner
-            # session_id can be returned if client needs to manage it explicitly
         )
     except Exception as e:
         print(f"Chat endpoint error: {e}")
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
-@app.post("/v1/upload_document", response_model=UploadResponse)
-async def upload_user_document(file: UploadFile = File(...)):
-    """
-    Uploads a user document, processes it, and adds it to the user's vector collection.
-    """
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No filename provided.")
-
-    contents = await file.read()
-    stored_path, message = store_uploaded_file(contents, file.filename)
-
-    if not stored_path:
-        raise HTTPException(status_code=500, detail=message)
-
-    processing_result, proc_message = load_single_document(stored_path)
-
-    if not processing_result or not processing_result.documents:
-        # Clean up stored file if processing failed badly
-        # os.remove(stored_path) # Consider if this is desired
-        raise HTTPException(status_code=400, detail=proc_message or "Failed to process document content.")
-
-    added = vector_db_service.add_documents(
-        collection_name=config.USER_DOCUMENTS_COLLECTION_NAME,
-        processing_result=processing_result
-    )
-
-    if not added:
-        # Clean up stored file if DB add failed
-        # os.remove(stored_path) # Consider if this is desired
-        raise HTTPException(status_code=500, detail="Document processed but failed to add to vector database.")
-
-    return UploadResponse(
-        message=f"'{file.filename}' uploaded and processed successfully. {processing_result.chunk_count} chunks added.",
-        filename=file.filename,
-        chunks_added=processing_result.chunk_count
-    )
+# TODO: Implement upload document endpoint when store_uploaded_file and load_single_document are available
+# @app.post("/v1/upload_document", response_model=UploadResponse)
+# async def upload_user_document(
+#     file: UploadFile = File(...),
+#     vector_db_service: VectorDBService = Depends(get_vector_db_service)
+# ):
 
 @app.get("/v1/list_user_documents", response_model=FileListResponse)
-async def list_user_documents():
+async def list_user_documents(
+    vector_db_service: VectorDBService = Depends(get_vector_db_service)
+):
     """
     Lists documents uploaded by the user and their status in the vector database.
     """
-    # Files physically in the upload directory
-    # physical_files = list_uploaded_files_in_dir()
+    # TODO: Implement get_user_document_summary method in VectorDBService
+    # db_file_summary = vector_db_service.get_user_document_summary()
     
-    # Files and chunk counts from the vector database metadata
-    db_file_summary = vector_db_service.get_user_document_summary()
-    
-    if not db_file_summary:
-        return FileListResponse(files=[], message="No user documents found in the database.")
-        
-    return FileListResponse(files=db_file_summary, message="User documents retrieved successfully.")
+    # For now, return empty list until method is implemented
+    return FileListResponse(files=[])
+
+
+@app.post("/v1/admin/process_directories")
+async def process_directories(
+    ingestion_service: IngestionService = Depends(get_ingestion_service)
+):
+    """
+    Admin endpoint: Process all documents in the configured directories.
+    """
+    try:
+        result = ingestion_service.process_all_directories()
+        return {"status": "success", "message": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing directories: {str(e)}")
+
+
+@app.post("/v1/admin/process_single_directory")
+async def process_single_directory(
+    from_dir: str,
+    to_dir: str, 
+    source: str = "system_upload",
+    ingestion_service: IngestionService = Depends(get_ingestion_service)
+):
+    """
+    Admin endpoint: Process documents from a specific directory.
+    """
+    try:
+        success = ingestion_service.process_directory(from_dir, to_dir, source)
+        if success:
+            return {"status": "success", "message": f"Successfully processed documents from {from_dir}"}
+        else:
+            return {"status": "info", "message": f"No documents processed from {from_dir}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing directory: {str(e)}")
+
+
+@app.get("/v1/collections")
+async def list_collections(
+    vector_db_service: VectorDBService = Depends(get_vector_db_service)
+):
+    """
+    List all vector database collections and their document counts.
+    """
+    try:
+        collections = vector_db_service.list_collections()
+        collection_info = []
+        for collection_name in collections:
+            count = vector_db_service.get_collection_count(collection_name)
+            collection_info.append({
+                "name": collection_name,
+                "document_count": count
+            })
+        return {"collections": collection_info}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error listing collections: {str(e)}")
 
 
 @app.get("/health")

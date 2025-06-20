@@ -3,21 +3,24 @@ from typing import List, Dict, Any, Optional, Tuple
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage, SystemMessage
 
-from app import config
+from app.core.config import settings
 from app.prompt_engineering.builder import get_universal_matrix_prompt
-from app.services.vector_db_service import vector_db_service # Import the instance
+from app.services.vector_db_service import VectorDBService
 
 class ChatService:
     def __init__(self):
         self.llm = ChatGoogleGenerativeAI(
-            model=config.LLM_MODEL_NAME,
-            api_key=config.GOOGLE_API_KEY,
-            temperature=config.LLM_TEMPERATURE,
-            # max_tokens=config.LLM_MAX_TOKENS, # Often not needed for Chat models, can cause issues
-            # timeout=config.LLM_TIMEOUT,
-            max_retries=config.LLM_MAX_RETRIES,
+            model=settings.LLM_MODEL_NAME,
+            api_key=settings.GOOGLE_API_KEY,
+            temperature=settings.LLM_TEMPERATURE,
+            # max_tokens=settings.LLM_MAX_TOKENS,
+            # timeout=settings.LLM_TIMEOUT,
+            max_retries=settings.LLM_MAX_RETRIES,
             convert_system_message_to_human=True # Gemini API prefers this for system messages
         )
+        # Instantiate the VectorDBService
+        self.vector_db_service = VectorDBService()
+        
         # In-memory state - for a real app, this should be managed per-session/user
         self.conversation_history: Dict[str, List[BaseMessage]] = {} # Keyed by a session_id
         self.current_process_step: Dict[str, int] = {}
@@ -73,7 +76,7 @@ class ChatService:
                 if results.get('metadatas') and results['metadatas'] is not None and results['metadatas'][0] is not None:
                     metadata = results['metadatas'][0][i] if i < len(results['metadatas'][0]) else {}
                 source = metadata.get('filename', "Unknown source")
-                context += f"\n--- From {source} (Chunk {metadata.get('chunk', 'N/A')}) ---\n{doc_content}\n"
+                context += f"\n--- From {source} (Chunk {metadata.get('chunk_index', 'N/A')}) ---\n{doc_content}\n"
             has_results = True
         return context, has_results    
     
@@ -120,16 +123,14 @@ class ChatService:
             
         if selected_alignment:
             mode_context += f"\n--- ALIGNMENT: {selected_alignment.upper()} ---\n"
-            mode_context += f"Please respond with a {selected_alignment.lower()} approach.\n"
-
-        # Query vector databases
-        fw_results = vector_db_service.query_collection(
-            collection_name=config.FRAMEWORKS_COLLECTION_NAME,
-            query_texts=[query_text], n_results=2
+            mode_context += f"Please respond with a {selected_alignment.lower()} approach.\n"        # Query vector databases using the service instance
+        fw_results = self.vector_db_service.query_collection(
+            collection_name=settings.FRAMEWORKS_COLLECTION_NAME,
+            query_text=query_text, n_results=2
         )
-        user_results = vector_db_service.query_collection(
-            collection_name=config.USER_DOCUMENTS_COLLECTION_NAME,
-            query_texts=[query_text], n_results=2
+        user_results = self.vector_db_service.query_collection(
+            collection_name=settings.USER_DOCUMENTS_COLLECTION_NAME,
+            query_text=query_text, n_results=2
         )
 
         combined_context = ""
