@@ -1,69 +1,101 @@
-version: '3.8'
-
 services:
-  redis:
-    image: redis
-    networks:
-      - app-network
-
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"  # Frontend
-      - "8000:8000"  # FastAPI Backend
-    depends_on:
-      - redis
-      - chromadb
-    networks:
-      - app-network
-      
+  # ChromaDB Vector Database
   chromadb:
     image: chromadb/chroma:latest
     ports:
-      - "8001:8001"  
+      - "8001:8000"  # ChromaDB default port is 8000, expose as 8001 to avoid conflicts
     volumes:
       - chromadb_data:/chroma/chroma
     environment:
       - CHROMA_SERVER_HOST=0.0.0.0
-      - CHROMA_SERVER_HTTP_PORT=8001
+      - CHROMA_SERVER_HTTP_PORT=8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - app-network
+    profiles:
+      - dev
+      - prod
+      - all
 
+  # Redis for session storage
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - app-network
+    profiles:
+      - dev
+      - prod
+      - all
+
+  # FastAPI Backend
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile.fastapi
+    ports:
+      - "8000:8000"  # FastAPI backend
+    depends_on:
+      chromadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ./data:/app/data
+      - ./documents:/app/documents
+    networks:
+      - app-network
+    profiles:
+      - dev
+      - prod
+      - all
+
+  # Reflex UI Frontend
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.reflex
     ports:
-      - "3000:3000"
+      - "3000:3000"  # Reflex frontend
     depends_on:
       - fastapi
-      - redis
-      - chromadb
     environment:
-      - FASTAPI_URL=http://fastapi:80  # Internal Docker network URL
-      - API_BASE_URL=http://localhost:8000  # External URL for client-side requests
+      - FASTAPI_BASE_URL=http://fastapi:8000  # Internal Docker network URL
     networks:
       - app-network
+    profiles:
+      - dev
+      - all
 
-  fastapi:
-    build:
-      context: ./src
-      dockerfile: Dockerfile
-    ports:
-      - "80:80"
-    depends_on:
-      chromadb:
-        condition: service_healthy
-    environment:
-      - CHROMA_HOST=chromadb
-      - CHROMA_PORT=8001
+  # Development tools (only for dev profile)
+  dev-tools:
+    image: alpine:latest
+    command: sh -c "echo 'Development environment ready! 🚀' && sleep infinity"
+    profiles:
+      - dev
     networks:
       - app-network
 
 volumes:
   chromadb_data:
+  redis_data:
 
 networks:
   app-network:

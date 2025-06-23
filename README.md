@@ -242,18 +242,9 @@ uv run reflex run --env dev
 
 ```
 
-#### Docker Mode (ChromaDB Server)
+#### Docker Mode
 
-(WIP)
-
-```bash
-# Start ChromaDB container
-docker-compose up -d chromadb
-
-# Update .env: USE_CHROMA_SERVER=true
-# Then start the FastAPI application
-python -m uvicorn src.app.main:app --reload
-```
+See the [🐳 Docker Deployment](#-docker-deployment) section above for complete Docker setup instructions.
 
 ## 📡 API Endpoints
 
@@ -672,6 +663,69 @@ EXPOSE 8000
 
 CMD ["uvicorn", "src.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
+
+## 🐳 Docker Deployment
+
+This project uses Docker Compose for easy deployment with separate services for FastAPI backend, Reflex frontend, ChromaDB, and Redis.
+
+### Quick Start
+
+```bash
+# Build and start all services
+docker-compose up -d --build
+
+# View running services
+docker-compose ps
+
+# View logs
+docker-compose logs -f
+
+# Stop all services
+docker-compose down
+```
+
+### Development Profile
+
+```bash
+# Start only development services (FastAPI + ChromaDB + Redis)
+docker-compose --profile dev up -d
+
+# Start with automatic rebuilding
+docker-compose --profile dev up -d --build
+```
+
+### Production Profile
+
+```bash
+# Start production services with optimizations
+docker-compose --profile prod up -d
+
+# Production with specific resource limits
+docker-compose --profile prod up -d --build
+```
+
+### Individual Services
+
+```bash
+# Start only ChromaDB and Redis (for local development)
+docker-compose up -d chromadb redis
+
+# Start only backend services
+docker-compose up -d fastapi
+
+# Start only frontend
+docker-compose up -d frontend
+```
+
+### Access Points
+
+Once running, access the application at:
+
+- **Reflex UI Frontend**: http://localhost:3000
+- **FastAPI Backend**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
+- **ChromaDB**: http://localhost:8001
+- **Redis**: localhost:6379
 
 ## 🧪 Testing
 

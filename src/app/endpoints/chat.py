@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Body, Depends, Query
 from typing import Optional
 from pydantic import BaseModel
@@ -62,7 +63,6 @@ async def simple_chat(
     This endpoint provides a simplified interface for chatting with the AI
     without needing to manage all the advanced features like steps, planner, etc.
     """
-    import uuid
     
     # Generate session ID if not provided
     session_id = request.session_id or str(uuid.uuid4())
