@@ -6,7 +6,7 @@ import uuid # For session IDs
 
 from app.schemas.models import QueryRequest, QueryResponse, UploadResponse, FileListResponse
 from app.services.chat_service import chat_service # Singleton instance
-from app.services.vector_db_service import vector_db_service # Singleton instance
+from app.services.vector_db_service import initialize_vector_db # Singleton instance
 from app.services.document_service import (
     store_uploaded_file,
     load_single_document
@@ -90,7 +90,7 @@ async def upload_user_document(file: UploadFile = File(...)):
         # os.remove(stored_path) # Consider if this is desired
         raise HTTPException(status_code=400, detail=proc_message or "Failed to process document content.")
 
-    added = vector_db_service.add_documents(
+    added = initialize_vector_db.add_documents(
         collection_name=config.USER_DOCUMENTS_COLLECTION_NAME,
         processing_result=processing_result
     )
@@ -115,7 +115,7 @@ async def list_user_documents():
     # physical_files = list_uploaded_files_in_dir()
     
     # Files and chunk counts from the vector database metadata
-    db_file_summary = vector_db_service.get_user_document_summary()
+    db_file_summary = initialize_vector_db.get_user_document_summary()
     
     if not db_file_summary:
         return FileListResponse(files=[], message="No user documents found in the database.")

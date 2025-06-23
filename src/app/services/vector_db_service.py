@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import chromadb
 import chromadb.utils.embedding_functions as embedding_functions
 
-from config import CHROMA_DB_PATH, NEW_DOCUMENTS_DIR
+from app.config import CHROMA_DB_PATH, NEW_DOCUMENTS_DIR
 from app.services.ingestion_service import load_documents_from_directory
 
 load_dotenv()

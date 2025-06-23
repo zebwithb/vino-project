@@ -1,10 +1,10 @@
 """ Program to upload a files to Supabase storage."""
 import os
 
-from ingestion_service import load_documents_from_directory
-from file_system_service import upload_move_to_processed
+from app.services.ingestion_service import load_documents_from_directory
+from app.services.file_system_service import upload_move_to_processed
 
-from config import NEW_DOCUMENTS_DIR, NEW_USER_UPLOADS_DIR, KB_DOCUMENTS_DIR, USER_UPLOADS_DIR
+from app.config import NEW_DOCUMENTS_DIR, NEW_USER_UPLOADS_DIR, KB_DOCUMENTS_DIR, USER_UPLOADS_DIR
 
 
 def upload_documents_to_sql(metadata_list, content_list):

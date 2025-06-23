@@ -32,10 +32,10 @@ RUN $uv sync --locked
 
 # Deploy templates and prepare app
 WORKDIR /app/reflex_ui
-RUN reflex init
+RUN $uv run reflex init
 
 # Export static copy of frontend
-RUN reflex export --frontend-only --no-zip
+RUN $uv run reflex export --frontend-only --no-zip
 
 # ── STAGE 2: runtime ───────────────────────────────────────────────────────
 FROM python:3.12-slim-bookworm
@@ -59,7 +59,7 @@ WORKDIR /app/reflex_ui
 EXPOSE 3000 8000
 
 # Always apply migrations before starting the backend
-CMD [ -d alembic ] && reflex db migrate; \
-    exec reflex run --env prod --loglevel debug
+CMD [ -d alembic ] && $uv run reflex db migrate; \
+    exec $uv run reflex --env prod --loglevel debug
 
 

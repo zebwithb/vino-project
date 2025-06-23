@@ -21,8 +21,8 @@ import pypandoc
 import tiktoken
 from dotenv import load_dotenv
 
-from schemas.models import DocumentChunk, DocumentMetadata
-from config import (
+from app.schemas.models import DocumentChunk, DocumentMetadata
+from app.config import (
     ROOT_DIR, ALLOWED_FILETYPES, MAX_CHUNK_TOKENS,
     TOC_PATTERN, LINE_ENDING_PATTERN, NEWLINE_REPLACE_PATTERN,
     PARAGRAPH_BREAK_PATTERN, WHITESPACE_PATTERN, BULLET_NUMBERED_PATTERN,

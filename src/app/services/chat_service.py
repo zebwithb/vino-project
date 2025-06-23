@@ -5,7 +5,8 @@ from langchain_core.messages import HumanMessage, AIMessage, BaseMessage, System
 
 from app import config
 from app.prompt_engineering.builder import get_universal_matrix_prompt
-from app.services.vector_db_service import vector_db_service # Import the instance
+from app.services.vector_db_service import initialize_vector_db # Import the instance
+
 
 class ChatService:
     def __init__(self):
@@ -123,11 +124,11 @@ class ChatService:
             mode_context += f"Please respond with a {selected_alignment.lower()} approach.\n"
 
         # Query vector databases
-        fw_results = vector_db_service.query_collection(
+        fw_results = initialize_vector_db.query_collection(
             collection_name=config.FRAMEWORKS_COLLECTION_NAME,
             query_texts=[query_text], n_results=2
         )
-        user_results = vector_db_service.query_collection(
+        user_results = initialize_vector_db.query_collection(
             collection_name=config.USER_DOCUMENTS_COLLECTION_NAME,
             query_texts=[query_text], n_results=2
         )
