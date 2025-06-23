@@ -1,19 +1,27 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import os
+import logging
 
 from app.schemas.models import FileListResponse
 from app.services.chat_service import ChatService
 from app.services.vector_db_service import VectorDBService
 from app.services.ingestion_service import IngestionService
 from app.endpoints.chat import router as chat_router
-# TODO: Import these when they are implemented
-# from app.services.document_service import (
-#     store_uploaded_file,
-#     load_single_document
-# )
 from app.core.config import settings
 from app.dependencies import get_chat_service, get_vector_db_service, get_ingestion_service, get_session_storage_service
+from app.core.exceptions import (
+    LLMInitializationError,
+    LLMInvocationError,
+    PromptGenerationError,
+    SessionStorageError,
+    SupabaseServiceError,
+    VinoError
+)
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 # Function to ensure required directories exist
 def create_required_directories():
@@ -45,14 +53,106 @@ app.add_middleware(
 # Include routers
 app.include_router(chat_router)
 
+# --- Exception Handlers ---
+
+@app.exception_handler(LLMInitializationError)
+async def llm_initialization_exception_handler(request: Request, exc: LLMInitializationError):
+    logger.error(f"LLM Initialization Error: {exc.message}")
+    return JSONResponse(
+        status_code=503,
+        content={"detail": f"Language model service unavailable: {exc.message}"}
+    )
+
+@app.exception_handler(LLMInvocationError)
+async def llm_invocation_exception_handler(request: Request, exc: LLMInvocationError):
+    logger.error(f"LLM Invocation Error: {exc.message}")
+    return JSONResponse(
+        status_code=503,
+        content={"detail": f"Language model request failed: {exc.message}"}
+    )
+
+@app.exception_handler(PromptGenerationError)
+async def prompt_generation_exception_handler(request: Request, exc: PromptGenerationError):
+    logger.error(f"Prompt Generation Error: {exc.message}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {exc.message}"}
+    )
+
+@app.exception_handler(SessionStorageError)
+async def session_storage_exception_handler(request: Request, exc: SessionStorageError):
+    logger.warning(f"Session Storage Error: {exc.message}")
+    return JSONResponse(
+        status_code=503,
+        content={"detail": f"Session service temporarily unavailable: {exc.message}"}
+    )
+
+@app.exception_handler(SupabaseServiceError)
+async def supabase_service_exception_handler(request: Request, exc: SupabaseServiceError):
+    logger.error(f"Supabase Service Error: {exc.message}")
+    return JSONResponse(
+        status_code=503,
+        content={"detail": f"Database service unavailable: {exc.message}"}
+    )
+
+@app.exception_handler(VinoError)
+async def vino_exception_handler(request: Request, exc: VinoError):
+    logger.error(f"Application Error: {exc.message}")
+    return JSONResponse(
+        status_code=400,
+        content={"detail": f"Application error: {exc.message}"}
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unexpected error: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An unexpected internal server error occurred"}
+    )
+
 # --- API Endpoints ---
 
-# TODO: Implement upload document endpoint when store_uploaded_file and load_single_document are available
-# @app.post("/v1/upload_document", response_model=UploadResponse)
-# async def upload_user_document(
-#     file: UploadFile = File(...),
-#     vector_db_service: VectorDBService = Depends(get_vector_db_service)
-# ):
+@app.post("/v1/upload_document")
+async def upload_user_document(
+    file: UploadFile = File(...),
+    ingestion_service: IngestionService = Depends(get_ingestion_service)
+):
+    """
+    Upload a document for processing and storage in the vector database.
+    """
+    try:
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No filename provided")
+            
+        # Save the uploaded file
+        file_path = os.path.join(settings.USER_UPLOADS_DIR, file.filename)
+        
+        # Write the file to disk
+        with open(file_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # Use the existing process_directory method to process the uploaded file
+        # by processing the user uploads directory
+        success = ingestion_service.process_directory(
+            from_dir=settings.USER_UPLOADS_DIR,
+            to_dir=settings.USER_UPLOADS_DIR,
+            source="user_upload"
+        )
+        
+        return {
+            "message": "File uploaded and processed successfully" if success else "File uploaded but processing failed",
+            "filename": file.filename,
+            "detail": "File has been processed and added to vector database" if success else "Processing failed",
+            "chunks_added": 1 if success else 0  # Simplified for now
+        }
+        
+    except Exception as e:
+        logger.error(f"Error uploading document: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error uploading document: {str(e)}")
+
+# TODO: Implement when store_uploaded_file and load_single_document are available
 
 @app.get("/v1/list_user_documents", response_model=FileListResponse)
 async def list_user_documents(
@@ -182,7 +282,3 @@ async def cleanup_old_sessions(
 async def health_check():
     # Basic health check, can be expanded (e.g., check DB connection)
     return {"status": "healthy", "message": "Vino AI API is running."}
-
-# To run this FastAPI app (save the above as src/app/main.py):
-# Ensure you are in the root directory of your project (vino-project)
-# Then run: uvicorn src.app.main:app --reload

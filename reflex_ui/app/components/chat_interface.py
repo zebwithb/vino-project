@@ -145,7 +145,7 @@ def input_area() -> rx.Component:
                 ),
             ),
             on_submit=ChatState.send_message_from_input,
-            reset_on_submit=False,
+            reset_on_submit=False, 
             class_name="w-full",
         ),
         rx.cond(

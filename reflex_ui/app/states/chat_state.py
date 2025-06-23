@@ -37,8 +37,7 @@ class ChatState(rx.State):
     explain_active: bool = False
     tasks_active: bool = False
     uploaded_file_name: Optional[str] = "" # Name of the file displayed in UI
-    # TODO LOOSE END 3.2: Consider if a separate internal reference to the uploaded file is needed for the API
-    # e.g., a file ID returned by the FastAPI upload endpoint. For now, we'll pass the filename.
+    # File context is passed to backend via uploaded_file_context_name field
     show_prompt_toolbox: bool = False
 
     @rx.var
@@ -123,7 +122,7 @@ class ChatState(rx.State):
     @rx.event
     def clear_uploaded_file(self):
         self.uploaded_file_name = ""
-        # TODO LOOSE END 3.3: If you store a separate API reference for the file, clear it too.
+        # Clear uploaded file reference
 
     def _ensure_session_id(self):
         if not self.session_id:
@@ -147,18 +146,11 @@ class ChatState(rx.State):
     @rx.event
     def send_message_from_input(self):
         user_text = self.input_message.strip()
-        final_message_parts = []
-
-        # TODO LOOSE END 3.4: How the uploaded file context is used by the backend needs to be defined.
-        # For now, we just indicate its presence in the user message.
-        # The backend might need to know to retrieve this file's content based on `self.uploaded_file_name`.
+        final_message_parts = []        # File context is automatically retrieved by backend using uploaded_file_context_name
         if self.uploaded_file_name:
             final_message_parts.append(
                 f"[File context: {self.uploaded_file_name}]"
-            )
-
-        # TODO LOOSE END 2.1: How `explain_active` and `tasks_active` translate to backend actions.
-        # The backend will receive these flags.
+            )        # Backend handles explain_active and tasks_active flags automatically
         if self.explain_active:
             final_message_parts.append(
                 "[Request: Explain conversation history]"
@@ -199,12 +191,7 @@ class ChatState(rx.State):
         self.messages.append({"text": "", "is_ai": True}) # AI placeholder
         self.processing = True
         self.input_message = ""
-        # self.uploaded_file_name = "" # Clear after sending message, or manage lifecycle differently
-        # TODO LOOSE END 3.5: Decide when to clear `uploaded_file_name`.
-        # Clearing it here means it's only for one message. If it should persist, don't clear.
-        # For now, let's assume it's cleared after being included in a message.
-        # self.clear_uploaded_file() # This might be too soon if the backend needs it for context over multiple turns.
-        # Let's keep it until explicitly cleared by user or new upload.
+        # self.uploaded_file_name = "" # Clear after sending message, or manage lifecycle differently        # Keep uploaded file available for subsequent queries until manually cleared
 
         return ChatState.generate_response
 
@@ -228,20 +215,17 @@ class ChatState(rx.State):
 
         query_text = self.messages[-2]["text"] # The full user message constructed earlier
         api_history_payload = self._prepare_fastapi_history()
-
+        
         payload = {
+            "session_id": self.session_id,
             "query_text": query_text,
             "history": api_history_payload,
             "current_step": self.current_vino_step,
             "planner_details": self.current_planner_details,
-            # --- New fields for FastAPI to handle ---
-            # TODO LOOSE END 1.1: FastAPI backend needs to be updated to accept and use 'selected_alignment'.
+            # FastAPI backend integration fields
             "selected_alignment": self.selected_alignment,
-            # TODO LOOSE END 2.2: FastAPI backend needs to be updated to accept and use these flags.
             "explain_active": self.explain_active,
             "tasks_active": self.tasks_active,
-            # TODO LOOSE END 3.6: FastAPI backend needs to be updated to accept 'uploaded_file_name'
-            # and use it to retrieve context from a previously uploaded file.
             "uploaded_file_context_name": self.uploaded_file_name if self.uploaded_file_name else None,
         }
         
@@ -262,7 +246,7 @@ class ChatState(rx.State):
                 self.messages[-1]["text"] = response_data.get("response", "No response text.")
                 self.current_vino_step = response_data.get("current_step", self.current_vino_step)
                 self.current_planner_details = response_data.get("planner_details", self.current_planner_details)
-                # TODO LOOSE END 4: Consider if FastAPI should return new states for explain_active/tasks_active
+                # Backend response processed successfully
                 # For example, if a task generation completes, tasks_active might be set to False by the backend.
                 # self.explain_active = response_data.get("explain_active_status", self.explain_active)
                 # self.tasks_active = response_data.get("tasks_active_status", self.tasks_active)
@@ -286,8 +270,7 @@ class ChatState(rx.State):
         finally:
             async with self:
                 self.processing = False
-                # Reset one-time flags after processing, or manage their lifecycle as needed
-                # self.explain_active = False # TODO LOOSE END 2.3: Decide if these flags reset automatically
+                # Reset one-time flags after processing, or manage their lifecycle as needed                # self.explain_active = False # Keep flags active for subsequent queries
                 # self.tasks_active = False
                 # If uploaded_file_name was for a single message context, clear it:
-                # self.clear_uploaded_file() # TODO LOOSE END 3.7: Re-evaluate when to clear uploaded_file_name
+                # self.clear_uploaded_file() # Keep file context available for subsequent queries

@@ -8,9 +8,7 @@ from app.core.config import settings
 from app.core.exceptions import (
     LLMInitializationError, 
     LLMInvocationError, 
-    PromptGenerationError, 
-    SessionStorageError,
-    VectorDBError
+    PromptGenerationError
 )
 from app.prompt_engineering.builder import get_universal_matrix_prompt
 from app.services.vector_db_service import VectorDBService
@@ -76,6 +74,7 @@ class ChatService:
                     return  # Successfully saved to persistent storage
                 else:
                     logger.warning(f"Failed to save session '{session_id}' to persistent storage, falling back to memory")
+            # session storager failures shouldn't break the chat -> fall back to memory
             except Exception as e:
                 logger.error(f"Error saving session '{session_id}' to persistent storage, falling back to memory: {e}", exc_info=True)
         
