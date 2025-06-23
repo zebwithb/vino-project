@@ -229,10 +229,17 @@ vino-project/
 
 ```bash
 # Start the FastAPI application
-python -m uvicorn src.app.main:app --reload
-
+cd ./src
+uv run fastapi dev
 # Access the API at http://localhost:8000
 # View API docs at http://localhost:8000/docs
+```
+
+```bash
+# Start the Reflex Web App
+cd ./reflex_ui
+uv run reflex run --env dev
+
 ```
 
 #### Docker Mode (ChromaDB Server)

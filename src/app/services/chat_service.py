@@ -1,9 +1,17 @@
+import logging
 from typing import List, Dict, Any, Optional, Tuple
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage, SystemMessage
 
 from app.core.config import settings
+from app.core.exceptions import (
+    LLMInitializationError, 
+    LLMInvocationError, 
+    PromptGenerationError, 
+    SessionStorageError,
+    VectorDBError
+)
 from app.prompt_engineering.builder import get_universal_matrix_prompt
 from app.services.vector_db_service import VectorDBService
 
@@ -12,21 +20,27 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from app.services.session_storage_service import SessionStorageService
 
+# Configure logging
+logger = logging.getLogger(__name__)
+
 class ChatService:
-    def __init__(self, vector_db_service: Optional[VectorDBService] = None, session_storage_service: Optional["SessionStorageService"] = None):
-        self.llm = ChatGoogleGenerativeAI(
-            model=settings.LLM_MODEL_NAME,
-            api_key=settings.GOOGLE_API_KEY,
-            temperature=settings.LLM_TEMPERATURE,
-            # max_tokens=settings.LLM_MAX_TOKENS,
-            # timeout=settings.LLM_TIMEOUT,
-            max_retries=settings.LLM_MAX_RETRIES,
-            convert_system_message_to_human=True # Gemini API prefers this for system messages
-        )
+    def __init__(self, vector_db_service: Optional[VectorDBService] = None, session_storage_service: Optional["SessionStorageService"] = None):       
+        try:
+            self.llm = ChatGoogleGenerativeAI(
+                model=settings.LLM_MODEL_NAME,
+                api_key=settings.GOOGLE_API_KEY,
+                temperature=settings.LLM_TEMPERATURE,
+                max_retries=settings.LLM_MAX_RETRIES,
+                convert_system_message_to_human=True # Gemini API prefers this for system messages
+            )
+        except Exception as e:
+            logger.critical(f"Failed to initialize ChatGoogleGenerativeAI. Check API key and configuration. Error: {e}", exc_info=True)
+            raise LLMInitializationError() from e
+            
         # Use provided services or create new ones
         self.vector_db_service = vector_db_service or VectorDBService()
         self.session_storage_service = session_storage_service
-          # Keep in-memory fallback for when persistent storage is not available
+        # Keep in-memory fallback for when persistent storage is not available
         self.conversation_history: Dict[str, List[BaseMessage]] = {} # Keyed by a session_id
         self.current_process_step: Dict[str, int] = {}
         self.planner_details: Dict[str, Optional[str]] = {}
@@ -38,10 +52,11 @@ class ChatService:
             try:
                 return self.session_storage_service.get_session_data(session_id)
             except Exception as e:
-                print(f"Error loading session from persistent storage, falling back to memory: {e}")
+                logger.error(f"Error loading session '{session_id}' from persistent storage, falling back to memory: {e}", exc_info=True)
         
         # Fallback to in-memory storage
         if session_id not in self.conversation_history:
+            logger.info(f"Creating new in-memory session for session_id: {session_id}")
             self.conversation_history[session_id] = []
             self.current_process_step[session_id] = 1
             self.planner_details[session_id] = None
@@ -60,9 +75,9 @@ class ChatService:
                 if success:
                     return  # Successfully saved to persistent storage
                 else:
-                    print("Failed to save to persistent storage, falling back to memory")
+                    logger.warning(f"Failed to save session '{session_id}' to persistent storage, falling back to memory")
             except Exception as e:
-                print(f"Error saving session to persistent storage, falling back to memory: {e}")
+                logger.error(f"Error saving session '{session_id}' to persistent storage, falling back to memory: {e}", exc_info=True)
         
         # Fallback to in-memory storage
         self.conversation_history[session_id] = history
@@ -71,20 +86,23 @@ class ChatService:
 
     def delete_session(self, session_id: str) -> bool:
         """Delete a session from storage."""
-        success = False
+        persistent_success = False
         
         if self.session_storage_service:
-            success = self.session_storage_service.delete_session(session_id)
+            try:
+                persistent_success = self.session_storage_service.delete_session(session_id)
+            except Exception as e:
+                logger.error(f"Error deleting session '{session_id}' from persistent storage: {e}", exc_info=True)
         
         # Also clean up from memory
+        memory_cleaned = False
         if session_id in self.conversation_history:
             del self.conversation_history[session_id]
-        if session_id in self.current_process_step:
             del self.current_process_step[session_id]
-        if session_id in self.planner_details:
             del self.planner_details[session_id]
+            memory_cleaned = True
             
-        return success
+        return persistent_success or memory_cleaned
 
     def get_session_info(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Get session metadata without loading full conversation."""
@@ -138,8 +156,8 @@ class ChatService:
                 source = metadata.get('filename', "Unknown source")
                 context += f"\n--- From {source} (Chunk {metadata.get('chunk_index', 'N/A')}) ---\n{doc_content}\n"
             has_results = True
-        return context, has_results    
-    
+        return context, has_results
+
     def process_query(
         self, 
         session_id: str, 
@@ -157,7 +175,9 @@ class ChatService:
             current_step = current_step_override
             if current_step_override == 1:  # Reset history if jumping back to step 1
                 history = []
-                planner = None        # Handle uploaded file context
+                planner = None
+        
+        # Handle uploaded file context
         file_context = ""
         if uploaded_file_context_name:
             try:
@@ -179,10 +199,9 @@ class ChatService:
                 if not has_file_results:
                     file_context = f"\n--- File Context from {uploaded_file_context_name} ---\n"
                     file_context += "[No relevant content found in this file for your query.]\n"
-                
-                print(f"File context loaded for: {uploaded_file_context_name}")
+                logger.info(f"File context loaded for: {uploaded_file_context_name}")
             except Exception as e:
-                print(f"Error loading file context: {e}")
+                logger.error(f"Error loading file context for '{uploaded_file_context_name}': {e}", exc_info=True)
                 file_context = f"\n--- File Context from {uploaded_file_context_name} ---\n"
                 file_context += f"[Error loading file context: {str(e)}]\n"
 
@@ -242,10 +261,8 @@ class ChatService:
         )
 
         if not prompt_template:
-            error_msg = f"Error: Could not generate prompt for step {current_step}."
-            print(error_msg)
-            # Return current state without advancing or adding to history
-            return error_msg, self._convert_langchain_history_to_api(history), current_step, planner
+            logger.error(f"Could not generate prompt for step {current_step}")
+            raise PromptGenerationError()
 
         try:
             # Construct the chain for this call
@@ -281,10 +298,11 @@ class ChatService:
                     if isinstance(ai_response_content, str):
                         planner = ai_response_content.split("PLANNER DEFINED:")[1].strip()
                 except IndexError:
-                    pass # Planner not found or format incorrect            self._update_session_data(session_id, history, current_step, planner)
+                    pass # Planner not found or format incorrect
+            
+            self._update_session_data(session_id, history, current_step, planner)
             return str(ai_response_content), self._convert_langchain_history_to_api(history), current_step, planner
         
         except Exception as e:
-            print(f"Error during LLM chain invocation: {e}")
-            # Return current state without advancing or adding to history
-            return f"Error: Failed to get response from language model. {str(e)}", self._convert_langchain_history_to_api(history), current_step, planner
+            logger.error(f"Error during LLM chain invocation for session '{session_id}': {e}", exc_info=True)
+            raise LLMInvocationError(f"Failed to get response from language model: {str(e)}") from e

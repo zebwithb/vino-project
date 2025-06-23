@@ -2,6 +2,13 @@ from fastapi import APIRouter, HTTPException, Body, Depends
 from ..schemas.models import QueryRequest as ChatRequest, QueryResponse as ChatResponse
 from ..services.chat_service import ChatService
 from ..dependencies import get_chat_service
+from ..core.exceptions import (
+    LLMInitializationError,
+    LLMInvocationError, 
+    PromptGenerationError,
+    SessionStorageError,
+    VinoError
+)
 
 router = APIRouter(
     prefix="/v1/chat",
@@ -25,17 +32,28 @@ async def handle_chat_request(
             tasks_active=request.tasks_active,
             uploaded_file_context_name=request.uploaded_file_context_name        )
         
-        if not ai_response_content: # Or based on some error indicator from process_query
-            raise HTTPException(status_code=404, detail="Could not generate an answer.")
-        
         return ChatResponse(
             response=ai_response_content,
             current_step=updated_current_step,
             planner_details=planner_str
         )
+    
+    except LLMInitializationError as e:
+        raise HTTPException(status_code=503, detail=f"Language model service unavailable: {e.message}")
+    except LLMInvocationError as e:
+        raise HTTPException(status_code=503, detail=f"Language model request failed: {e.message}")
+    except PromptGenerationError as e:
+        raise HTTPException(status_code=500, detail=f"Internal error: {e.message}")
+    except SessionStorageError as e:
+        raise HTTPException(status_code=503, detail=f"Session service unavailable: {e.message}")
+    except VinoError as e:
+        # Catch other custom application errors
+        raise HTTPException(status_code=400, detail=f"Application error: {e.message}")
     except HTTPException:
         raise # Re-raise HTTPException to ensure correct status code and detail
     except Exception as e:
-        print(f"Error in /v1/chat endpoint: {e}")
-        # Consider logging the full traceback here for debugging
-        raise HTTPException(status_code=500, detail=f"Internal server error during chat processing: {str(e)}")
+        # Log unexpected errors with full traceback
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Unexpected error in /v1/chat endpoint: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An unexpected internal server error occurred")
