@@ -1,126 +1,181 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional
 import os
-import uuid # For session IDs
 
-from app.schemas.models import QueryRequest, QueryResponse, UploadResponse, FileListResponse
-from app.services.chat_service import chat_service # Singleton instance
-from app.services.vector_db_service import initialize_vector_db # Singleton instance
-from app.services.document_service import (
-    store_uploaded_file,
-    load_single_document
-)
-from app import config # To access USER_UPLOADS_DIR etc.
+from app.schemas.models import FileListResponse
+from app.services.chat_service import ChatService
+from app.services.vector_db_service import VectorDBService
+from app.services.ingestion_service import IngestionService
+from app.endpoints.chat import router as chat_router
+# TODO: Import these when they are implemented
+# from app.services.document_service import (
+#     store_uploaded_file,
+#     load_single_document
+# )
+from app.core.config import settings
+from app.dependencies import get_chat_service, get_vector_db_service, get_ingestion_service, get_session_storage_service
 
 # Function to ensure required directories exist
 def create_required_directories():
     """
     Ensure all required directories exist.
     """
-    os.makedirs(config.USER_UPLOADS_DIR, exist_ok=True)
-    os.makedirs(config.DOCUMENTS_DIR, exist_ok=True) # For framework documents
-    print(f"Ensured directories: {config.USER_UPLOADS_DIR}, {config.DOCUMENTS_DIR}")
+    os.makedirs(settings.USER_UPLOADS_DIR, exist_ok=True)
+    os.makedirs(settings.DOCUMENTS_DIR, exist_ok=True)
+    print(f"Ensured directories: {settings.USER_UPLOADS_DIR}, {settings.DOCUMENTS_DIR}")
 
 create_required_directories()
 
 # Main FastAPI application setup
 app = FastAPI(
-    title="Vino AI API",
-    description="API for Vino AI project planning assistant and document analysis.",
-    version="0.1.0"
+    title=settings.PROJECT_NAME,
+    description=settings.PROJECT_DESCRIPTION,
+    version=settings.VERSION
 )
 
 # CORS (Cross-Origin Resource Sharing)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allow all origins for now, restrict in production
+    allow_origins=settings.CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Include routers
+app.include_router(chat_router)
+
 # --- API Endpoints ---
 
-@app.post("/v1/chat", response_model=QueryResponse)
-async def chat_with_vino(request: QueryRequest, session_id: Optional[str] = Form(None)):
-    """
-    Main endpoint for interacting with the VINO AI assistant.
-    Manages conversation state using a session_id.
-    """
-    if not session_id:
-        session_id = str(uuid.uuid4()) # Generate a new session ID if not provided
-
-    try:
-        response_text, updated_history, new_step, new_planner = chat_service.process_query(
-            session_id=session_id,
-            query_text=request.query_text,
-            api_history_data=request.history,
-            current_step_override=request.current_step # Allow client to suggest step
-        )
-        return QueryResponse(
-            response=response_text,
-            history=updated_history,
-            current_step=new_step,
-            planner_details=new_planner
-            # session_id can be returned if client needs to manage it explicitly
-        )
-    except Exception as e:
-        print(f"Chat endpoint error: {e}")
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
-
-@app.post("/v1/upload_document", response_model=UploadResponse)
-async def upload_user_document(file: UploadFile = File(...)):
-    """
-    Uploads a user document, processes it, and adds it to the user's vector collection.
-    """
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No filename provided.")
-
-    contents = await file.read()
-    stored_path, message = store_uploaded_file(contents, file.filename)
-
-    if not stored_path:
-        raise HTTPException(status_code=500, detail=message)
-
-    processing_result, proc_message = load_single_document(stored_path)
-
-    if not processing_result or not processing_result.documents:
-        # Clean up stored file if processing failed badly
-        # os.remove(stored_path) # Consider if this is desired
-        raise HTTPException(status_code=400, detail=proc_message or "Failed to process document content.")
-
-    added = initialize_vector_db.add_documents(
-        collection_name=config.USER_DOCUMENTS_COLLECTION_NAME,
-        processing_result=processing_result
-    )
-
-    if not added:
-        # Clean up stored file if DB add failed
-        # os.remove(stored_path) # Consider if this is desired
-        raise HTTPException(status_code=500, detail="Document processed but failed to add to vector database.")
-
-    return UploadResponse(
-        message=f"'{file.filename}' uploaded and processed successfully. {processing_result.chunk_count} chunks added.",
-        filename=file.filename,
-        chunks_added=processing_result.chunk_count
-    )
+# TODO: Implement upload document endpoint when store_uploaded_file and load_single_document are available
+# @app.post("/v1/upload_document", response_model=UploadResponse)
+# async def upload_user_document(
+#     file: UploadFile = File(...),
+#     vector_db_service: VectorDBService = Depends(get_vector_db_service)
+# ):
 
 @app.get("/v1/list_user_documents", response_model=FileListResponse)
-async def list_user_documents():
+async def list_user_documents(
+    vector_db_service: VectorDBService = Depends(get_vector_db_service)
+):
     """
     Lists documents uploaded by the user and their status in the vector database.
     """
-    # Files physically in the upload directory
-    # physical_files = list_uploaded_files_in_dir()
+    # TODO: Implement get_user_document_summary method in VectorDBService
+    # db_file_summary = vector_db_service.get_user_document_summary()
     
-    # Files and chunk counts from the vector database metadata
-    db_file_summary = initialize_vector_db.get_user_document_summary()
-    
-    if not db_file_summary:
-        return FileListResponse(files=[], message="No user documents found in the database.")
-        
-    return FileListResponse(files=db_file_summary, message="User documents retrieved successfully.")
+    # For now, return empty list until method is implemented
+    return FileListResponse(files=[])
+
+
+@app.post("/v1/admin/process_directories")
+async def process_directories(
+    ingestion_service: IngestionService = Depends(get_ingestion_service)
+):
+    """
+    Admin endpoint: Process all documents in the configured directories.
+    """
+    try:
+        result = ingestion_service.process_all_directories()
+        return {"status": "success", "message": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing directories: {str(e)}")
+
+
+@app.post("/v1/admin/process_single_directory")
+async def process_single_directory(
+    from_dir: str,
+    to_dir: str, 
+    source: str = "system_upload",
+    ingestion_service: IngestionService = Depends(get_ingestion_service)
+):
+    """
+    Admin endpoint: Process documents from a specific directory.
+    """
+    try:
+        success = ingestion_service.process_directory(from_dir, to_dir, source)
+        if success:
+            return {"status": "success", "message": f"Successfully processed documents from {from_dir}"}
+        else:
+            return {"status": "info", "message": f"No documents processed from {from_dir}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing directory: {str(e)}")
+
+
+@app.get("/v1/collections")
+async def list_collections(
+    vector_db_service: VectorDBService = Depends(get_vector_db_service)
+):
+    """
+    List all vector database collections and their document counts.
+    """
+    try:
+        collections = vector_db_service.list_collections()
+        collection_info = []
+        for collection_name in collections:
+            count = vector_db_service.get_collection_count(collection_name)
+            collection_info.append({
+                "name": collection_name,
+                "document_count": count
+            })
+        return {"collections": collection_info}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error listing collections: {str(e)}")
+
+
+@app.get("/v1/admin/session/{session_id}")
+async def get_session_info(
+    session_id: str,
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    """
+    Admin endpoint: Get information about a specific chat session.
+    """
+    try:
+        session_info = chat_service.get_session_info(session_id)
+        if session_info:
+            return {"session": session_info}
+        else:
+            raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving session info: {str(e)}")
+
+
+@app.delete("/v1/admin/session/{session_id}")
+async def delete_session(
+    session_id: str,
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    """
+    Admin endpoint: Delete a specific chat session.
+    """
+    try:
+        success = chat_service.delete_session(session_id)
+        if success:
+            return {"message": f"Session {session_id} deleted successfully"}
+        else:
+            return {"message": f"Session {session_id} not found or could not be deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting session: {str(e)}")
+
+
+@app.post("/v1/admin/cleanup_sessions")
+async def cleanup_old_sessions(
+    days_old: int = 30,
+    session_storage_service = Depends(get_session_storage_service)
+):
+    """
+    Admin endpoint: Clean up sessions older than specified days.
+    """
+    try:
+        deleted_count = session_storage_service.cleanup_old_sessions(days_old)
+        return {
+            "message": "Cleanup completed",
+            "deleted_sessions": deleted_count,
+            "days_threshold": days_old
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error during cleanup: {str(e)}")
 
 
 @app.get("/health")

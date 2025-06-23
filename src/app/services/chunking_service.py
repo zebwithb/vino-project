@@ -14,7 +14,7 @@ Features:
 
 import os
 import re
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 from pathlib import Path
 
 import pypandoc
@@ -22,12 +22,7 @@ import tiktoken
 from dotenv import load_dotenv
 
 from app.schemas.models import DocumentChunk, DocumentMetadata
-from app.config import (
-    ROOT_DIR, ALLOWED_FILETYPES, MAX_CHUNK_TOKENS,
-    TOC_PATTERN, LINE_ENDING_PATTERN, NEWLINE_REPLACE_PATTERN,
-    PARAGRAPH_BREAK_PATTERN, WHITESPACE_PATTERN, BULLET_NUMBERED_PATTERN,
-    SENTENCE_SPLIT_PATTERN
-)
+from app.core.config import settings
 
 # Load environment variables
 load_dotenv()
@@ -44,7 +39,7 @@ def identify_doc_type(doc: str) -> str:
     Returns:
         Document type classification ('TOC_WITHOUT_TITLE' or 'NO_TOC_TITLE')
     """
-    return "TOC_WITHOUT_TITLE" if TOC_PATTERN.search(doc) else "NO_TOC_TITLE"
+    return "TOC_WITHOUT_TITLE" if settings.TOC_PATTERN.search(doc) else "NO_TOC_TITLE"
 
 
 def read_doc(path: str) -> Tuple[str, str]:
@@ -98,19 +93,19 @@ def cleanup_plaintext(text: str) -> str:
     text = text.replace("[image]", "").replace("[]", "")
 
     # Normalize line endings to \n
-    text = LINE_ENDING_PATTERN.sub('\n', text)
+    text = settings.LINE_ENDING_PATTERN.sub('\n', text)
 
     # Replace single \n with space EXCEPT when:
     # - followed by another \n (paragraph break)
     # - followed by "- " (bullet point)
     # - preceded by a bullet point and followed by "- " (between bullet points)
-    text = NEWLINE_REPLACE_PATTERN.sub(' ', text)
+    text = settings.NEWLINE_REPLACE_PATTERN.sub(' ', text)
 
     # Replace any sequence of two or more newlines with \n\n
-    text = PARAGRAPH_BREAK_PATTERN.sub('\n\n', text)
+    text = settings.PARAGRAPH_BREAK_PATTERN.sub('\n\n', text)
 
     # Replace multiple spaces with single space
-    text = WHITESPACE_PATTERN.sub(' ', text)
+    text = settings.WHITESPACE_PATTERN.sub(' ', text)
     
     return text
 
@@ -210,7 +205,7 @@ def chunk_single_file(file_path: str) -> List[DocumentChunk]:
     # Apply oversized chunk splitting
     final_chunks = []
     for chunk in text_chunks:
-        split_chunks = split_oversized_chunk(chunk, MAX_CHUNK_TOKENS)
+        split_chunks = split_oversized_chunk(chunk, settings.MAX_CHUNK_TOKENS)
         final_chunks.extend(split_chunks)
     
     if DEBUG_MODE:
@@ -239,7 +234,7 @@ def chunk_single_file(file_path: str) -> List[DocumentChunk]:
     
     return document_chunks
 
-def split_oversized_chunk(chunk_text: str, max_tokens: int = MAX_CHUNK_TOKENS) -> List[str]:
+def split_oversized_chunk(chunk_text: str, max_tokens: int = settings.MAX_CHUNK_TOKENS) -> List[str]:
     """
     Split an oversized chunk into smaller chunks while preserving meaning.
     
@@ -268,7 +263,7 @@ def split_oversized_chunk(chunk_text: str, max_tokens: int = MAX_CHUNK_TOKENS) -
     split_chunks = []
     
     # Try splitting by bullet points or numbered lists first
-    if BULLET_NUMBERED_PATTERN.search(content):
+    if settings.BULLET_NUMBERED_PATTERN.search(content):
         split_chunks = _split_by_list_items(content, heading, max_tokens, encoding)
     # If no bullet points, try splitting by sentences
     elif '.' in content:
@@ -290,7 +285,7 @@ def split_oversized_chunk(chunk_text: str, max_tokens: int = MAX_CHUNK_TOKENS) -
 
 def _split_by_list_items(content: str, heading: str, max_tokens: int, encoding) -> List[str]:
     """Split content by bullet points or numbered items."""
-    parts = BULLET_NUMBERED_PATTERN.split(content)
+    parts = settings.BULLET_NUMBERED_PATTERN.split(content)
     current_chunk = ""
     chunks = []
     
@@ -319,7 +314,7 @@ def _split_by_list_items(content: str, heading: str, max_tokens: int, encoding) 
 
 def _split_by_sentences(content: str, heading: str, max_tokens: int, encoding) -> List[str]:
     """Split content by sentences."""
-    sentences = SENTENCE_SPLIT_PATTERN.split(content)
+    sentences = settings.SENTENCE_SPLIT_PATTERN.split(content)
     current_chunk = ""
     chunks = []
     
@@ -358,8 +353,8 @@ def _split_by_words(content: str, heading: str, max_tokens: int) -> List[str]:
     
     return chunks
 
-def process_documents(root_dir: str = ROOT_DIR, 
-                     allowed_filetypes: List[str] = ALLOWED_FILETYPES) -> List[DocumentChunk]:
+def process_documents(root_dir: str = settings.PROJECT_ROOT, 
+                     allowed_filetypes: List[str] = settings.ALLOWED_FILETYPES) -> List[DocumentChunk]:
     """
     Process all documents in a directory and return a list of chunks.
     

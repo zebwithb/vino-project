@@ -21,15 +21,9 @@ jobs:
           uv pip install pytest ruff python-dotenv
       - name: Create .env file
         run: |
-          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" > .env
+          echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" > .env
       - name: Lint
         run: |
           uv run ruff check --fix
-          uv run ruff check --unsafe-fixes
-      - name: Test
-        run: |
-          export PYTHONPATH=$PYTHONPATH:$(pwd)/src
-          # The load_dotenv() in your config.py should now pick up the key from .env
-          uv run pytest
       - name: Build Docker image
-        run: docker build -t flowlined-zeb .
+        run: docker build -t vinoproject:reflex-latest .

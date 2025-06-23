@@ -6,10 +6,10 @@ import os
 import re
 
 from collections import Counter
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from app.schemas.models import FileMetadata, FileType
 
-from app.config import DEFAULT_MAX_KEYWORDS, DEFAULT_ABSTRACT_LENGTH, STOPWORDS
+from app.core.config import settings
 
 
 
@@ -28,7 +28,7 @@ def char_word_count(text: str) -> Tuple[int, int]:
     return char_count, word_count
 
 
-def extract_keywords(text: str, max_keywords: int = DEFAULT_MAX_KEYWORDS) -> List[str]:
+def extract_keywords(text: str, max_keywords: Optional[int] = None) -> List[str]:
     """
     Extract keywords from text using simple frequency analysis.
     
@@ -39,18 +39,21 @@ def extract_keywords(text: str, max_keywords: int = DEFAULT_MAX_KEYWORDS) -> Lis
     Returns:
         List of top keywords
     """
+    if max_keywords is None:
+        max_keywords = settings.DEFAULT_MAX_KEYWORDS
+        
     # Convert to lowercase and extract words (3+ characters)
     words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
     
     # Filter out stopwords
-    filtered_words = [word for word in words if word not in STOPWORDS]
+    filtered_words = [word for word in words if word not in settings.STOPWORDS]
     
     # Count word frequencies and get most common
     word_counts = Counter(filtered_words)
     return [word for word, _ in word_counts.most_common(max_keywords)]
 
 
-def generate_abstract(text: str, max_length: int = DEFAULT_ABSTRACT_LENGTH) -> str:
+def generate_abstract(text: str, max_length: Optional[int] = None) -> str:
     """
     Generate a simple abstract by taking the first part of the document.
     
@@ -61,6 +64,8 @@ def generate_abstract(text: str, max_length: int = DEFAULT_ABSTRACT_LENGTH) -> s
     Returns:
         Document abstract
     """
+    if max_length is None:
+        max_length = settings.DEFAULT_ABSTRACT_LENGTH
     # Clean up whitespace
     text = re.sub(r'\s+', ' ', text.strip())
     

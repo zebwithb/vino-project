@@ -20,6 +20,7 @@ dependencies = [
     "pytest>=8.4.0",
     "python-dotenv>=1.1.0",
     "reflex>=0.7.6",
+    "supabase>=2.15.3",
 ]
 
 [dependency-groups]

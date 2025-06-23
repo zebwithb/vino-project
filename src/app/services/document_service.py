@@ -3,10 +3,9 @@ Document Processing Service Module
 """
 
 import os
-from typing import List
 import tiktoken
 
-from app.config import SUPPORTED_EXTENSIONS, ENCODING_MODEL, MAX_CHUNK_TOKENS, OVERLAP_TOKENS, DEBUG_MODE
+from app.core.config import settings
 from app.schemas.models import ProcessingResult, DocumentMetadata
 
 from app.services.chunking_service import chunk_single_file
@@ -47,9 +46,8 @@ def process_document_content(file_path: str, content: str, page_count: int = 0,
         except Exception as e:
             print(f"Error using fixed-size chunking for PDF {file_name}: {e}")
             print("Falling back to simple processing...")
-    
-    # Try advanced chunking for other supported file types
-    elif file_extension in SUPPORTED_EXTENSIONS:
+      # Try advanced chunking for other supported file types
+    elif file_extension in settings.SUPPORTED_EXTENSIONS:
         try:
             return _process_with_advanced_chunking(file_path, content, page_count, source)
         except Exception as e:
@@ -133,8 +131,8 @@ def _process_with_simple_chunking(file_path: str, content: str, page_count: int,
 
 
 def _process_with_fixed_size_chunking(file_path: str, content: str, page_count: int, 
-                                    source: str, max_tokens: int = MAX_CHUNK_TOKENS, 
-                                    overlap_tokens: int = OVERLAP_TOKENS) -> ProcessingResult:
+                                    source: str, max_tokens: int = None, 
+                                    overlap_tokens: int = None) -> ProcessingResult:
     """
     Process document using fixed-size chunking strategy based on tokens.
     
@@ -149,13 +147,19 @@ def _process_with_fixed_size_chunking(file_path: str, content: str, page_count: 
     Returns:
         ProcessingResult with fixed-size chunking applied
     """
+    # Use settings values if not provided
+    if max_tokens is None:
+        max_tokens = settings.MAX_CHUNK_TOKENS
+    if overlap_tokens is None:
+        overlap_tokens = settings.OVERLAP_TOKENS
+        
     result = ProcessingResult()
     file_name = os.path.basename(file_path)
     doc_id_base = os.path.splitext(file_name)[0]
     
     # Initialize tokenizer
     try:
-        encoding = tiktoken.encoding_for_model(ENCODING_MODEL)
+        encoding = tiktoken.encoding_for_model(settings.ENCODING_MODEL)
     except Exception:
         # Fallback to a default encoding if model not found
         encoding = tiktoken.get_encoding("cl100k_base")

@@ -1,199 +1,202 @@
 import os
-from dotenv import load_dotenv
+from typing import List, Dict, Any, Optional
 
 import chromadb
 import chromadb.utils.embedding_functions as embedding_functions
 
-from app.config import CHROMA_DB_PATH, NEW_DOCUMENTS_DIR
-from app.services.ingestion_service import load_documents_from_directory
-
-load_dotenv()
+from app.core.config import settings
+from app.schemas.models import ProcessingResult
 
 
-def initialize_vector_db():
-    """
-    Initialize ChromaDB and load documents if needed.
+class VectorDBService:
+    """Service for managing ChromaDB vector database operations."""
     
-    Returns:
-        tuple: (frameworks_collection, user_documents_collection)
-    """
-    client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
-    google_ef = embedding_functions.GoogleGenerativeAiEmbeddingFunction(api_key=api_key)
+    def __init__(self, db_path: Optional[str] = None):
+        """Initialize ChromaDB client and setup."""
+        self.db_path = db_path or settings.CHROMA_DB_PATH
+        self.client = None
+        self.google_ef = None
+        self._initialize_client()
     
-    try:
-        # Create or get the frameworks collection
-        collection_fw = client.get_or_create_collection(
-            name="frameworks", 
-            embedding_function=google_ef
-        )
-        
-        # Create or get the user documents collection
-        collection_user = client.get_or_create_collection(
-            name="user_documents",
-            embedding_function=google_ef
-        )
-
-        # Process documents only if needed
-        if collection_fw.count() == 0:
-            print("Frameworks collection is empty. Loading documents...")
-            documents, metadatas, ids, message = load_documents_from_directory(NEW_DOCUMENTS_DIR)
+    def _initialize_client(self):
+        """Initialize the ChromaDB client and embedding function."""
+        try:
+            # Ensure the database directory exists
+            os.makedirs(self.db_path, exist_ok=True)
             
+            # Initialize ChromaDB client with persistent storage
+            self.client = chromadb.PersistentClient(path=self.db_path)
+            
+            # Initialize Google embedding function
+            self.google_ef = embedding_functions.GoogleGenerativeAiEmbeddingFunction(
+                api_key=settings.GOOGLE_API_KEY.get_secret_value()
+            )
+            
+            print(f"ChromaDB client initialized at: {self.db_path}")
+        except Exception as e:
+            print(f"Error initializing ChromaDB client: {e}")
+            raise
+    
+    def get_or_create_collection(self, collection_name: str):
+        """Get existing collection or create new one with Google embedding function."""
+        try:
+            return self.client.get_or_create_collection(
+                name=collection_name,
+                embedding_function=self.google_ef
+            )
+        except Exception as e:
+            print(f"Error getting/creating collection {collection_name}: {e}")
+            raise
+    
+    def add_documents(
+        self,
+        collection_name: str,
+        documents: List[str],
+        metadatas: List[Dict[str, Any]],
+        ids: List[str]
+    ) -> bool:
+        """Add documents to a ChromaDB collection."""
+        try:
+            collection = self.get_or_create_collection(collection_name)
+            
+            # Process metadatas to handle keywords list
+            processed_metadatas = []
             for metadata in metadatas:
-                if metadata and 'keywords' in metadata and isinstance(metadata['keywords'], list):
-                    metadata['keywords'] = ', '.join(metadata['keywords'])
+                processed_metadata = metadata.copy()
+                if 'keywords' in processed_metadata and isinstance(processed_metadata['keywords'], list):
+                    processed_metadata['keywords'] = ', '.join(processed_metadata['keywords'])
+                processed_metadatas.append(processed_metadata)
             
-            # Add documents to collection if any were loaded
-            if documents:
-                for doc, metadata, doc_id in zip(documents, metadatas, ids):
-                    if metadata.get('source') == 'user_upload':
-                        collection_user.add(documents=[doc], metadatas=[metadata], ids=[doc_id])
-                    else:
-                        collection_fw.add(documents=[doc], metadatas=[metadata], ids=[doc_id])
-                
-                print(f"Added {len(documents)} document chunks to the frameworks collection.")
+            collection.add(
+                documents=documents,
+                metadatas=processed_metadatas,
+                ids=ids
+            )
+            
+            print(f"Successfully added {len(documents)} documents to collection '{collection_name}'")
+            return True
+            
+        except Exception as e:
+            print(f"Error adding documents to collection {collection_name}: {e}")
+            return False
+    
+    def add_processing_result(
+        self,
+        collection_name: str,
+        processing_result: ProcessingResult
+    ) -> bool:
+        """Add a ProcessingResult to ChromaDB collection."""
+        try:
+            # Convert ProcessingResult to the format ChromaDB expects
+            documents = processing_result.chunk_all_texts
+            ids = processing_result.chunk_ids
+            
+            # Convert Pydantic models to dictionaries for ChromaDB
+            metadatas = []
+            for doc_meta, file_meta in zip(processing_result.doc_metadatas, processing_result.file_metadatas):
+                combined_metadata = {
+                    **doc_meta.model_dump(),
+                    **file_meta.model_dump()
+                }
+                metadatas.append(combined_metadata)
+            
+            return self.add_documents(
+                collection_name=collection_name,
+                documents=documents,
+                metadatas=metadatas,
+                ids=ids
+            )
+            
+        except Exception as e:
+            print(f"Error adding ProcessingResult to collection {collection_name}: {e}")
+            return False
+    
+    def query_collection(
+        self,
+        collection_name: str,
+        query_text: str,
+        n_results: int = 5,
+        where: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Query documents from a ChromaDB collection."""
+        try:
+            collection = self.get_or_create_collection(collection_name)
+            
+            results = collection.query(
+                query_texts=[query_text],
+                n_results=n_results,
+                where=where
+            )
+            
+            return results
+            
+        except Exception as e:
+            print(f"Error querying collection {collection_name}: {e}")
+            return {}
+    
+    def list_collections(self) -> List[str]:
+        """List all available collections."""
+        try:
+            collections = self.client.list_collections()
+            return [collection.name for collection in collections]
+        except Exception as e:
+            print(f"Error listing collections: {e}")
+            return []
+    
+    def delete_collection(self, collection_name: str) -> bool:
+        """Delete a collection."""
+        try:
+            self.client.delete_collection(name=collection_name)
+            print(f"Successfully deleted collection '{collection_name}'")
+            return True
+        except Exception as e:
+            print(f"Error deleting collection {collection_name}: {e}")
+            return False
+    
+    def get_collection_count(self, collection_name: str) -> int:
+        """Get the number of documents in a collection."""
+        try:
+            collection = self.get_or_create_collection(collection_name)
+            return collection.count()
+        except Exception as e:
+            print(f"Error getting count for collection {collection_name}: {e}")
+            return 0
+    
+    def get_collection_documents(self, collection_name: str) -> Dict[str, Any]:
+        """Get all documents from a collection."""
+        try:
+            collection = self.get_or_create_collection(collection_name)
+            return collection.get()
+        except Exception as e:
+            print(f"Error getting documents from collection {collection_name}: {e}")
+            return {}
+    
+    def delete_all_documents(self, collection_name: str) -> Dict[str, Any]:
+        """Delete all documents from a specific collection."""
+        try:
+            collection = self.get_or_create_collection(collection_name)
+            
+            # Get all document IDs
+            documents = collection.get()
+            doc_ids = documents["ids"]
+            
+            # Delete all documents
+            if doc_ids:
+                collection.delete(ids=doc_ids)
+                result = {
+                    "deleted_count": len(doc_ids),
+                    "status": "success"
+                }
+                print(f"Deleted {len(doc_ids)} documents from collection '{collection_name}'.")
             else:
-                print("No documents were loaded. Please check the directory path.")
-        else:
-            print(f"Using existing frameworks collection with {collection_fw.count()} document chunks.")
-        
-        print(f"User documents collection has {collection_user.count()} document chunks.")
-        return collection_fw, collection_user
-
-    except Exception as e:
-        print(f"Error initializing ChromaDB collection: {e}")
-        raise
-
-def list_documents_in_collection(collection_name=None):
-    """
-    List all documents in a specific collection or in all collections.
-    
-    Args:
-        collection_name (str, optional): The name of the collection to query. 
-                                         If None, lists documents from all collections.
-    
-    Returns:
-        dict: Information about the queried collection(s)
-    """
-    client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
-    
-    if collection_name:
-        collections = [client.get_collection(name=collection_name)]
-    else:
-        collections = [
-            client.get_collection(name="frameworks"),
-            client.get_collection(name="user_documents")
-        ]
-    
-    results = {}
-    
-    for collection in collections:
-        # Get all documents from the collection
-        documents = collection.get()
-        
-        # Format the results
-        collection_data = {
-            "count": collection.count(),
-            "documents": []
-        }
-        
-        # Add document details
-        for i in range(len(documents["ids"])):
-            metadata = documents["metadatas"][i] if documents["metadatas"] else None
+                result = {
+                    "deleted_count": 0,
+                    "status": "no documents found"
+                }
+                print(f"No documents to delete in collection '{collection_name}'.")
             
-            # Display all metadata fields as they exist in the database
-            if metadata:
-                print(f"\n--- Document {i+1} ---")
-                print(f"ID: {documents['ids'][i]}")
-                
-                # Document-level metadata
-                print(f"Doc ID: {metadata.get('doc_id')}")
-                print(f"Chunk Number: {metadata.get('chunk_number')}")
-                print(f"Chunk Length: {metadata.get('chunk_length')}")
-                print(f"Section: {metadata.get('section')}")
-                
-                # File-level metadata
-                print(f"Source: {metadata.get('source')}")
-                print(f"Filename: {metadata.get('filename')}")
-                print(f"File Size: {metadata.get('file_size')} bytes")
-                print(f"File Type: {metadata.get('file_type')}")
-                print(f"Page Count: {metadata.get('page_count')}")
-                print(f"Word Count: {metadata.get('word_count')}")
-                print(f"Character Count: {metadata.get('char_count')}")
-                print(f"Keywords: {metadata.get('keywords')}")
-                print(f"Abstract: {metadata.get('abstract', '')[:100]}...")
-            else:
-                print(f"\n--- Document {i+1} ---")
-                print(f"ID: {documents['ids'][i]}")
-                print("No metadata available")
-            
-            doc_info = {
-                "id": documents["ids"][i],
-                "metadata": metadata,
-                "text_preview": documents["documents"][i][:100] + "..." if documents["documents"][i] else None
-            }
-            collection_data["documents"].append(doc_info)
-            
-            # Show text preview
-            print(f"Text Preview: {documents['documents'][i][:150]}...")
-            print("-" * 50)
+            return result
         
-        results[collection.name] = collection_data
-        print(f"\nCollection '{collection.name}' has {collection.count()} documents total.\n")
-        
-    return results
-
-
-# Get API key from environment
-api_key = os.getenv("GOOGLE_API_KEY")
-if not api_key:
-    raise ValueError("API key not found. Please set the GOOGLE_API_KEY environment variable.")
-
-def delete_all_documents(collection_name=None):
-    """
-    Delete all documents from a specific collection or from all collections.
-    
-    Args:
-        collection_name (str, optional): The name of the collection to clear.
-                                         If None, clears all collections.
-    
-    Returns:
-        dict: Information about the deletion operation
-    """
-    client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
-    
-    if collection_name:
-        collections = [client.get_collection(name=collection_name)]
-    else:
-        collections = [
-            client.get_collection(name="frameworks"),
-            client.get_collection(name="user_documents")
-        ]
-    
-    results = {}
-    
-    for collection in collections:
-        # Get all document IDs
-        documents = collection.get()
-        doc_ids = documents["ids"]
-        
-        # Delete all documents
-        if doc_ids:
-            collection.delete(ids=doc_ids)
-            results[collection.name] = {
-                "deleted_count": len(doc_ids),
-                "status": "success"
-            }
-            print(f"Deleted {len(doc_ids)} documents from collection '{collection.name}'.")
-        else:
-            results[collection.name] = {
-                "deleted_count": 0,
-                "status": "no documents found"
-            }
-            print(f"No documents to delete in collection '{collection.name}'.")
-    
-    return results
-
-# delete_all_documents("frameworks")
-# delete_all_documents("user_documents")
-# initialize_vector_db()
-# list_documents_in_collection("user_documents")
+        except Exception as e:
+            print(f"Error deleting documents from collection {collection_name}: {e}")
+            return {"deleted_count": 0, "status": "error", "error": str(e)}
