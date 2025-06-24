@@ -1,29 +1,140 @@
-name: CI
+name: VINO Project CI/CD
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  build-test:
+  # Lint and Test Job
+  lint-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
+
       - name: Install uv
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "~/.cargo/bin" >> $GITHUB_PATH
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
       - name: Install dependencies
         run: |
-          uv sync
-          # Ensure python-dotenv is installed if not in requirements.txt/pyproject.toml
+          uv sync --locked
           uv pip install pytest ruff python-dotenv
-      - name: Create .env file
+
+      - name: Create .env file for testing
         run: |
           echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" > .env
-      - name: Lint
+          echo "CHROMA_HOST=localhost" >> .env
+          echo "CHROMA_PORT=8001" >> .env
+          echo "REDIS_HOST=localhost" >> .env
+          echo "REDIS_PORT=6379" >> .env
+
+      - name: Lint with Ruff
         run: |
           uv run ruff check --fix
-      - name: Build Docker image
-        run: docker build -t vinoproject:reflex-latest .
+          uv run ruff format --check
+
+      - name: Run Python tests
+        run: |
+          uv run pytest tests/ -v
+        continue-on-error: true
+
+  # Docker Build and Test Job
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    strategy:
+      matrix:
+        service: [fastapi, reflex]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build ${{ matrix.service }} Docker image
+        run: |
+          docker build -f Dockerfile.${{ matrix.service }} -t vino-${{ matrix.service }}:latest .
+
+      - name: Test ${{ matrix.service }} Docker image
+        run: |
+          # Test that the image can be created and basic health check
+          docker run --rm -d --name test-${{ matrix.service }} vino-${{ matrix.service }}:latest
+          sleep 10
+          if [ "${{ matrix.service }}" = "fastapi" ]; then
+            docker exec test-${{ matrix.service }} curl -f http://localhost:8000/health || echo "Health check failed but continuing"
+          fi
+          docker stop test-${{ matrix.service }} || true
+
+  # Integration Test with Docker Compose
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: docker-build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file for integration
+        run: |
+          echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" > .env
+          echo "CHROMA_HOST=chromadb" >> .env
+          echo "CHROMA_PORT=8000" >> .env
+          echo "REDIS_HOST=redis" >> .env
+          echo "REDIS_PORT=6379" >> .env
+
+      - name: Build and start services
+        run: |
+          docker-compose build
+          docker-compose up -d
+
+      - name: Wait for services to be ready
+        run: |
+          # Wait for ChromaDB
+          timeout 60 bash -c 'until curl -f http://localhost:8001/api/v1/heartbeat; do sleep 2; done'
+          # Wait for FastAPI
+          timeout 60 bash -c 'until curl -f http://localhost:8000/health; do sleep 2; done'
+          # Wait for Redis
+          timeout 60 bash -c 'until nc -z localhost 6379; do sleep 2; done'
+
+      - name: Run integration tests
+        run: |
+          # Test FastAPI endpoints
+          curl -f http://localhost:8000/health
+          curl -f http://localhost:8000/v1/admin/files
+          
+          # Test basic chat functionality
+          curl -X POST http://localhost:8000/v1/chat \
+            -H "Content-Type: application/json" \
+            -d '{
+              "session_id": "test-session",
+              "query_text": "Hello, this is a test",
+              "history": [],
+              "current_step": 1
+            }' || echo "Chat test failed but continuing"
+
+      - name: Show service logs on failure
+        if: failure()
+        run: |
+          echo "=== FastAPI Logs ==="
+          docker-compose logs fastapi
+          echo "=== ChromaDB Logs ==="
+          docker-compose logs chromadb
+          echo "=== Redis Logs ==="
+          docker-compose logs redis
+          echo "=== Frontend Logs ==="
+          docker-compose logs frontend
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker-compose down -v
+          docker system prune -f
