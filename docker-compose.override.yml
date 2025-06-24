@@ -3,27 +3,15 @@
 version: '3.8'
 
 services:
-  # Override FastAPI for testing
+  # Override FastAPI for testing (now with embedded ChromaDB)
   fastapi:
     environment:
       - ENVIRONMENT=test
       - LOG_LEVEL=debug
+      - CHROMA_PERSIST_DIRECTORY=/app/data/chroma
     # Use a smaller timeout for faster CI
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
-
-  # Override ChromaDB for faster startup in CI
-  chromadb:
-    environment:
-      - CHROMA_SERVER_HOST=0.0.0.0
-      - CHROMA_SERVER_HTTP_PORT=8000
-      - ANONYMIZED_TELEMETRY=False
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
       interval: 10s
       timeout: 5s
       retries: 3

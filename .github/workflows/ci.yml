@@ -67,13 +67,23 @@ jobs:
 
       - name: Test ${{ matrix.service }} Docker image
         run: |
-          # Test that the image can be created and basic health check
-          docker run --rm -d --name test-${{ matrix.service }} vino-${{ matrix.service }}:latest
-          sleep 10
+          CONTAINER_NAME="test-${{ matrix.service }}"
+          # Test that the image can be created and basic health check.
+          # We add dummy env vars to prevent the app from crashing on startup.
+          docker run --rm -d --name ${CONTAINER_NAME} \
+            -e GOOGLE_API_KEY="test" \
+            -e REDIS_HOST="localhost" \
+            -e REDIS_PORT="6379" \
+            -e CHROMA_PERSIST_DIRECTORY="/tmp" \
+            -e FASTAPI_BASE_URL="http://localhost:8000" \
+            vino-${{ matrix.service }}:latest
+          
+          sleep 15 # Give container more time to start
+
           if [ "${{ matrix.service }}" = "fastapi" ]; then
-            docker exec test-${{ matrix.service }} curl -f http://localhost:8000/health || echo "Health check failed but continuing"
+            docker exec ${CONTAINER_NAME} curl -f http://localhost:8000/health || echo "Health check failed but continuing"
           fi
-          docker stop test-${{ matrix.service }} || true
+          docker stop ${CONTAINER_NAME} || true
 
   # Integration Test with Docker Compose
   integration-test:
