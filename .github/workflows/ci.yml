@@ -86,10 +86,9 @@ jobs:
       - name: Create .env file for integration
         run: |
           echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" > .env
-          echo "CHROMA_HOST=chromadb" >> .env
-          echo "CHROMA_PORT=8000" >> .env
           echo "REDIS_HOST=redis" >> .env
           echo "REDIS_PORT=6379" >> .env
+          echo "CHROMA_PERSIST_DIRECTORY=/app/data/chroma" >> .env
 
       - name: Build and start services
         run: |
@@ -98,12 +97,10 @@ jobs:
 
       - name: Wait for services to be ready
         run: |
-          # Wait for ChromaDB
-          timeout 60 bash -c 'until curl -f http://localhost:8001/api/v1/heartbeat; do sleep 2; done'
-          # Wait for FastAPI
-          timeout 60 bash -c 'until curl -f http://localhost:8000/health; do sleep 2; done'
+          # Wait for FastAPI (which now includes ChromaDB)
+          timeout 120 bash -c 'until curl -f http://localhost:8000/health; do echo "Waiting for FastAPI..."; sleep 5; done'
           # Wait for Redis
-          timeout 60 bash -c 'until nc -z localhost 6379; do sleep 2; done'
+          timeout 60 bash -c 'until nc -z localhost 6379; do echo "Waiting for Redis..."; sleep 2; done'
 
       - name: Run integration tests
         run: |
@@ -126,8 +123,6 @@ jobs:
         run: |
           echo "=== FastAPI Logs ==="
           docker compose logs fastapi
-          echo "=== ChromaDB Logs ==="
-          docker compose logs chromadb
           echo "=== Redis Logs ==="
           docker compose logs redis
           echo "=== Frontend Logs ==="
