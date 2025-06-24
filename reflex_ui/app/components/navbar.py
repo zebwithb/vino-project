@@ -11,8 +11,8 @@ NAVBAR_CONFIG = {
     "background_color": "#f0f0f0",
     "step_color": "white",
     "active_height": "10vh",  # Slightly smaller than navbar to avoid overflow
-    "inactive_height": "3vh",  # Further reduced to ensure no overlap with bottom border
-    "first_step_height": "1vh"  # Reasonable size for first step
+    "inactive_height": "5.1vh",  # Further reduced to ensure no overlap with bottom border
+    "first_step_height": "2vh"  # Reasonable size for first step
 }
 
 STEP_DESCRIPTION = {
@@ -75,7 +75,7 @@ def navbar_link(
         inactive_image_props = get_common_image_props(
             src=default_image_src,
             alt_text=alt_text,
-            height="100%",  # Fill the full container height
+            height=inactive_height,  # Fill the full container height
             max_width=inactive_max_width,  # Use conditional width
             padding_x="1.5vh",  # Reduced padding for better fill
             padding_y="0.5vh"   # Add some vertical padding
