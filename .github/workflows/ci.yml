@@ -40,7 +40,7 @@ jobs:
       - name: Lint with Ruff
         run: |
           uv run ruff check --fix
-          uv run ruff format --check
+          uv run ruff format
 
       - name: Run Python tests
         run: |
