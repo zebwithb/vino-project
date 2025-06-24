@@ -13,7 +13,11 @@ def alignment_radio_option(
             on_change=lambda val: ChatState.set_selected_alignment(
                 option
             ),
-            class_name="mr-1.5 accent-sky-500",
+            class_name="mr-1.5",
+            style={
+                "accent_color": "rgb(14, 165, 233)",  # sky-500 blue when selected
+                "border": "1px solid #7a7a7a",  # gray border for unselected
+            },
             default_value=option,
         ),
         rx.el.span(
@@ -26,14 +30,13 @@ def alignment_radio_option(
 
 def input_area() -> rx.Component:
     return rx.el.div(
-        rx.el.div(
-            rx.el.button(
-                rx.icon(
+        rx.el.div(            rx.el.button(                rx.icon(
                     "box-select", size=16, class_name="mr-2"
                 ),
                 "Prompt Toolbox",
                 on_click=ChatState.toggle_prompt_toolbox,
-                class_name="px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 flex items-center whitespace-nowrap",
+                class_name="px-3 py-2 text-sm font-medium text-slate-700 bg-white border rounded-lg hover:bg-slate-50 flex items-center whitespace-nowrap",
+                style={"border_color": "#7a7a7a"},
             ),
             rx.el.div(
                 rx.foreach(
@@ -44,25 +47,24 @@ def input_area() -> rx.Component:
             ),
             class_name="flex flex-col sm:flex-row items-center gap-3 mb-3 px-4 pt-3",
         ),
-        rx.el.form(
-            rx.el.div(
-                rx.el.textarea(
+        rx.el.form(              
+            rx.el.div(                rx.el.textarea(
                     default_value=ChatState.input_message,
                     placeholder="Ask Vino AI...",
                     on_change=ChatState.set_input_message,
-                    class_name="flex-grow p-3 bg-white border border-slate-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-sky-400 min-h-[60px] max-h-40 text-slate-800 placeholder-slate-400 text-sm",
+                    class_name="flex-grow p-3 bg-white border border-[#7a7a7a] rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-sky-400 min-h-[60px] max-h-40 text-slate-800 placeholder-slate-400 text-sm",
                 ),
                 class_name="flex items-end gap-2 px-4",
             ),
             rx.el.div(
                 rx.upload.root(
-                    rx.el.div(
-                        rx.icon(
+                    rx.el.div(                        rx.icon(
                             "plus",
                             size=18,
                             class_name="text-slate-600 group-hover:text-sky-500 transition-colors",
                         ),
-                        class_name="p-2.5 rounded-lg border border-slate-300 hover:border-sky-400 cursor-pointer group flex items-center justify-center bg-white hover:bg-slate-50",
+                        class_name="p-2.5 rounded-lg border bg-white hover:border-sky-400 cursor-pointer group flex items-center justify-center hover:bg-slate-50",
+                        style={"border_color": "#7a7a7a"},
                     ),
                     id="chat_file_upload",
                     on_drop=ChatState.handle_upload(
@@ -75,13 +77,12 @@ def input_area() -> rx.Component:
                 rx.el.button(
                     rx.icon(
                         "info", size=16, class_name="mr-1.5"
-                    ),
-                    "Explain",
-                    on_click=ChatState.toggle_explain,
+                    ),                    "Explain",
+                    on_click=ChatState.toggle_explain,                    
                     class_name=rx.cond(
                         ChatState.explain_active,
                         "px-3 py-2 text-sm font-medium text-white bg-sky-500 border border-sky-500 rounded-lg hover:bg-sky-600 flex items-center transition-colors",
-                        "px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 flex items-center transition-colors",
+                        "px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-[#7a7a7a] rounded-lg hover:bg-slate-100 flex items-center transition-colors",
                     ),
                 ),
                 rx.el.button(
@@ -91,11 +92,10 @@ def input_area() -> rx.Component:
                         class_name="mr-1.5",
                     ),
                     "Tasks",
-                    on_click=ChatState.toggle_tasks,
-                    class_name=rx.cond(
+                    on_click=ChatState.toggle_tasks,                    class_name=rx.cond(
                         ChatState.tasks_active,
                         "px-3 py-2 text-sm font-medium text-white bg-sky-500 border border-sky-500 rounded-lg hover:bg-sky-600 flex items-center transition-colors",
-                        "px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 flex items-center transition-colors",
+                        "px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-[#7a7a7a] rounded-lg hover:bg-slate-100 flex items-center transition-colors",
                     ),
                 ),
                 rx.el.button(
@@ -157,7 +157,7 @@ def input_area() -> rx.Component:
                 "Clear Chat",
                 on_click=ChatState.clear_messages,
                 class_name="mt-3 mb-1 text-xs text-slate-500 hover:text-red-500 flex items-center self-center transition-colors",
-            ),
-        ),
-        class_name="sticky bottom-0 left-0 right-0 py-3 bg-slate-100/90 backdrop-blur-md border-t border-slate-200 flex flex-col",
+            ),        ),
+        class_name="sticky bottom-0 left-0 right-0 py-3 backdrop-blur-md border-t flex flex-col",
+        style={"background_color": "#f0f0f0", "border_top_color": "#7a7a7a"},
     )
