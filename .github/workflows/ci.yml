@@ -102,8 +102,8 @@ jobs:
 
       - name: Build and start services
         run: |
-          docker compose build
-          docker compose up -d
+          docker compose --profile all build
+          docker compose --profile all up -d
 
       - name: Wait for services to be ready
         run: |
@@ -132,14 +132,14 @@ jobs:
         if: failure()
         run: |
           echo "=== FastAPI Logs ==="
-          docker compose logs fastapi
+          docker compose --profile all logs fastapi
           echo "=== Redis Logs ==="
-          docker compose logs redis
+          docker compose --profile all logs redis
           echo "=== Frontend Logs ==="
-          docker compose logs frontend
+          docker compose --profile all logs frontend
 
       - name: Cleanup
         if: always()
         run: |
-          docker compose down -v
+          docker compose --profile all down -v
           docker system prune -f
