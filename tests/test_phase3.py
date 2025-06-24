@@ -3,7 +3,6 @@ import pytest
 from unittest.mock import Mock, patch
 from app.services.chat_service import ChatService
 from app.services.vector_db_service import VectorDBService
-from app.core.config import settings
 
 
 class TestChatServiceFileContext:
