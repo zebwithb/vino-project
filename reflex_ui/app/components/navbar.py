@@ -6,12 +6,12 @@ from typing import Optional
 NAVBAR_CONFIG = {
     "step_count": 6,
     "step_width": "25vh",
-    "step_height": "5.79vh",  # Match navbar height
+    "step_height": "6h",  # Match navbar height
     "border_color": "#7a7a7a",
     "background_color": "#f0f0f0",
     "step_color": "white",
     "active_height": "10vh",  # Slightly smaller than navbar to avoid overflow
-    "inactive_height": "5vh",  # Fill most of the navbar height
+    "inactive_height": "3vh",  # Further reduced to ensure no overlap with bottom border
     "first_step_height": "1vh"  # Reasonable size for first step
 }
 
@@ -48,13 +48,11 @@ def navbar_link(
     text: Optional[str] = None
 ) -> rx.Component:
     """Creates a navbar link with active/inactive states for navigation steps."""
-    active_height = NAVBAR_CONFIG["first_step_height"] if step_number == 1 else NAVBAR_CONFIG["inactive_height"]
-    alt_text = text or f"Step {step_number}" if step_number else "Navigation icon"
-    
-    # Common link styles - position relative for z-index layering
+    inactive_height = NAVBAR_CONFIG["first_step_height"] if step_number == 1 else NAVBAR_CONFIG["inactive_height"]
+    alt_text = text or f"Step {step_number}" if step_number else "Navigation icon"    # Common link styles - position relative for z-index layering
     link_styles = {
         "href": url,
-        "height": NAVBAR_CONFIG["step_height"],
+        "height": "5.8vh",  # Fill the full navbar height
         "width": NAVBAR_CONFIG["step_width"],
         "display": "flex",
         "align_items": "center",
@@ -63,11 +61,10 @@ def navbar_link(
         "position": "relative",
     }
     
-    if active_image_src and step_number is not None:
-        # Link with active/inactive states
+    if active_image_src and step_number is not None:        # Link with active/inactive states
         active_image_props = get_common_image_props(
             src=active_image_src,
-            alt_text=alt_text,
+            alt_text=alt_text,            
             height=NAVBAR_CONFIG["active_height"],
             width="100%",
             max_width="25vh",   
@@ -76,9 +73,10 @@ def navbar_link(
         inactive_image_props = get_common_image_props(
             src=default_image_src,
             alt_text=alt_text,
-            height=active_height,
-            max_width="10vh",
-            padding_x="2vh"
+            height="100%",  # Fill the full container height
+            max_width="12vh",  # Slightly larger max width
+            padding_x="1.5vh",  # Reduced padding for better fill
+            padding_y="0.5vh"   # Add some vertical padding
         )
         
         # Determine border styles based on position
@@ -123,7 +121,7 @@ def navbar_link(
         image_props = get_common_image_props(
             src=default_image_src,
             alt_text=alt_text,
-            height=active_height,
+            height=inactive_height,
             max_width="20vh",
             padding_x="3vh",
             box_sizing="border-box"
@@ -175,12 +173,13 @@ def navbar() -> rx.Component:
         "padding": "0vh",
         "justify_content": "center",
     }
-    
-    # Step container styles
+      # Step container styles
     step_container_styles = {
         "justify": "between",
         "spacing": "0",
         "width": "70%",
+        "height": "100%",  # Fill the full container height
+        "align_items": "stretch",  # Stretch children to fill height
     }
     
     return rx.box(
