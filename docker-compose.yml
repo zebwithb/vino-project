@@ -1,26 +1,4 @@
 services:
-  # ChromaDB Vector Database
-  chromadb:
-    image: chromadb/chroma:latest
-    ports:
-      - "8001:8000"  # ChromaDB default port is 8000, expose as 8001 to avoid conflicts
-    volumes:
-      - chromadb_data:/chroma/chroma
-    environment:
-      - CHROMA_SERVER_HOST=0.0.0.0
-      - CHROMA_SERVER_HTTP_PORT=8000
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - app-network
-    profiles:
-      - dev
-      - prod
-      - all
-
   # Redis for session storage
   redis:
     image: redis:7-alpine
@@ -40,7 +18,7 @@ services:
       - prod
       - all
 
-  # FastAPI Backend
+  # FastAPI Backend (with embedded ChromaDB)
   fastapi:
     build:
       context: .
@@ -48,18 +26,16 @@ services:
     ports:
       - "8000:8000"  # FastAPI backend
     depends_on:
-      chromadb:
-        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      - CHROMA_HOST=chromadb
-      - CHROMA_PORT=8000
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - CHROMA_PERSIST_DIRECTORY=/app/data/chroma  # Embedded ChromaDB data directory
     volumes:
       - ./data:/app/data
       - ./documents:/app/documents
+      - chromadb_data:/app/data/chroma  # Persistent storage for embedded ChromaDB
     networks:
       - app-network
     profiles:
@@ -83,15 +59,6 @@ services:
     profiles:
       - dev
       - all
-
-  # Development tools (only for dev profile)
-  dev-tools:
-    image: alpine:latest
-    command: sh -c "echo 'Development environment ready! 🚀' && sleep infinity"
-    profiles:
-      - dev
-    networks:
-      - app-network
 
 volumes:
   chromadb_data:

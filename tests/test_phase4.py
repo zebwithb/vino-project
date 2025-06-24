@@ -1,7 +1,6 @@
 """Test Phase 4 Implementation - Session Storage"""
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime, timedelta
+from unittest.mock import Mock, patch
 from langchain_core.messages import HumanMessage, AIMessage
 
 from app.services.session_storage_service import SessionStorageService
