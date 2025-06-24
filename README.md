@@ -166,23 +166,20 @@ vino-project/
    cd vino-project
    ```
 
-2. **Create virtual environment**
+2. **Install uv**
 
-   ```bash
-   python -m venv venv
-   # Windows
-   venv\Scripts\activate
-   # Linux/Mac
-   source venv/bin/activate
-   ```
+https://docs.astral.sh/uv/getting-started/installation/#homebrew
 
-3. **Install dependencies**
+Follow the installation steps depending on your OS.
+Make sure the ENVIRONMENT VARIABLES are set up correctly for terminal/CLI use.
+
+4. **Install dependencies**
 
    ```bash
    uv sync
    ```
 
-4. **Set up environment variables**
+5. **Set up environment variables**
 
    Create a `.env` file in the project root:
 
@@ -203,7 +200,7 @@ vino-project/
    CHUNKING_DEBUG=false
    ```
 
-5. **Set up Supabase Database**
+6. **Set up Supabase Database (OPTIONAL)**
 
    Run the session storage migration in your Supabase SQL editor:
 
@@ -226,6 +223,9 @@ vino-project/
 ### Running the Application
 
 #### Local Mode (Default)
+
+Because of current port configuration it is important to run FastAPI first, and Reflex second, Reflex will dynamically adjust to an available port.
+The default port of FastAPI is 8000.
 
 ```bash
 # Start the FastAPI application
