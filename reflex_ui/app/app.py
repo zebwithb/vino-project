@@ -1,6 +1,7 @@
 import reflex as rx
 from app.states.chat_state import ChatState # Ensure ChatState is accessible
 from app.components.chat_interface import input_area # Import the input_area
+from app.components.navbar import navbar
 
 # Placeholder for a component that would display the chat messages
 def message_display_area() -> rx.Component:
@@ -30,6 +31,7 @@ def vino_chat_page() -> rx.Component:
     A page that displays the chat interface.
     """
     return rx.vstack(
+        navbar(), # Navigation bar component
         message_display_area(),  # Your component to display messages
         input_area(),            # The input area from your chat_interface.py
         spacing="0",
