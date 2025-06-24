@@ -1,6 +1,6 @@
 # CI/CD Architecture for VINO Project Docker Services
 
-## Desire
+## Goal
 
 The VINO project requires a modern, efficient CI/CD pipeline that supports:
 
