@@ -84,13 +84,42 @@ jobs:
         run: |
           docker compose --profile all build
           docker compose --profile all up -d
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
 
       - name: Wait for services to be ready
         run: |
-          # Wait for FastAPI (which now includes ChromaDB)
-          timeout 120 bash -c 'until curl -f http://localhost:8000/health; do echo "Waiting for FastAPI..."; sleep 5; done'
+          # Wait for FastAPI with early failure detection
+          echo "Waiting for FastAPI to be ready..."
+          for i in {1..24}; do  # 24 * 5 = 120 seconds total
+            if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+              echo "✅ FastAPI is ready!"
+              break
+            fi
+            
+            # Check for API key error in logs
+            if docker compose --profile all logs fastapi 2>/dev/null | grep -q "API key not found"; then
+              echo "❌ FastAPI failed to start: API key not found"
+              echo "=== FastAPI Logs ==="
+              docker compose --profile all logs fastapi
+              exit 1
+            fi
+            
+            echo "Waiting for FastAPI... (attempt $i/24)"
+            sleep 5
+          done
+          
+          # Final check
+          if ! curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+            echo "❌ FastAPI failed to start after 120 seconds"
+            echo "=== FastAPI Logs ==="
+            docker compose --profile all logs fastapi
+            exit 1
+          fi
+          
           # Wait for Redis
           timeout 60 bash -c 'until nc -z localhost 6379; do echo "Waiting for Redis..."; sleep 2; done'
+          echo "✅ Redis is ready!"
 
       - name: Run integration tests
         run: |
