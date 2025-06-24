@@ -15,8 +15,7 @@ ENV PATH="/root/.local/bin/:$PATH"
 WORKDIR /app
 
 # Copy project files
-COPY pyproject.toml uv.lock ./
-COPY reflex_ui/ ./reflex_ui/
+COPY . .
 
 # Install Python dependencies
 ENV UV_PROJECT_ENVIRONMENT=/usr/local

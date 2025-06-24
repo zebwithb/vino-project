@@ -19,9 +19,6 @@ WORKDIR /app
 COPY src/ ./src/
 COPY pyproject.toml uv.lock ./
 
-# Copy data and documents directories
-COPY data/ ./data/
-
 # Install Python dependencies
 ENV UV_PROJECT_ENVIRONMENT=/usr/local
 RUN uv sync --locked
