@@ -32,4 +32,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 ENV PATH="/root/.cargo/bin:$PATH"
 # Run FastAPI with uvicorn
-CMD ["uv", "run", "fastapi", "app/src/main.py", "--proxy-headers", "--port", "8000"]
+CMD ["uv", "run", "fastapi","run", "app/src/main.py", "--port", "8000"]
