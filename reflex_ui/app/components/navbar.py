@@ -49,7 +49,9 @@ def navbar_link(
 ) -> rx.Component:
     """Creates a navbar link with active/inactive states for navigation steps."""
     inactive_height = NAVBAR_CONFIG["first_step_height"] if step_number == 1 else NAVBAR_CONFIG["inactive_height"]
-    alt_text = text or f"Step {step_number}" if step_number else "Navigation icon"    # Common link styles - position relative for z-index layering
+    # Conditional width for steps 2 and 3 when inactive
+    inactive_max_width = "7vh" if step_number in [2, 3] else "12vh"
+    alt_text = text or f"Step {step_number}" if step_number else "Navigation icon"# Common link styles - position relative for z-index layering
     link_styles = {
         "href": url,
         "height": "5.8vh",  # Fill the full navbar height
@@ -61,7 +63,7 @@ def navbar_link(
         "position": "relative",
     }
     
-    if active_image_src and step_number is not None:        # Link with active/inactive states
+    if active_image_src and step_number is not None:        # Link with active/inactive states        
         active_image_props = get_common_image_props(
             src=active_image_src,
             alt_text=alt_text,            
@@ -74,7 +76,7 @@ def navbar_link(
             src=default_image_src,
             alt_text=alt_text,
             height="100%",  # Fill the full container height
-            max_width="12vh",  # Slightly larger max width
+            max_width=inactive_max_width,  # Use conditional width
             padding_x="1.5vh",  # Reduced padding for better fill
             padding_y="0.5vh"   # Add some vertical padding
         )

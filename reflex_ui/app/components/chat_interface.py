@@ -17,6 +17,7 @@ def alignment_radio_option(
             style={
                 "accent_color": "rgb(14, 165, 233)",  # sky-500 blue when selected
                 "border": "1px solid #7a7a7a",  # gray border for unselected
+
             },
             default_value=option,
         ),
