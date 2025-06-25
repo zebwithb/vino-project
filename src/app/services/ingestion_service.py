@@ -184,7 +184,7 @@ class IngestionService:
             processed_any = True
             
         # Process NEW_USER_UPLOADS_DIR (user uploaded documents)
-        if self.process_directory(settings.NEW_USER_UPLOADS_DIR, settings.USER_UPLOADS_DIR, source="user_uploads"):
+        if self.process_directory(settings.NEW_USER_UPLOADS_DIR, settings.USER_UPLOADS_DIR, source="user_upload"):
             processed_any = True
             
         if processed_any:
