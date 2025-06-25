@@ -146,6 +146,9 @@ class ChatState(rx.State):
     @rx.event
     def send_message_from_input(self):
         user_text = self.input_message.strip()
+        # Clear input immediately to provide immediate feedback
+        self.input_message = ""
+        
         final_message_parts = []        # File context is automatically retrieved by backend using uploaded_file_context_name
         if self.uploaded_file_name:
             final_message_parts.append(
@@ -190,7 +193,7 @@ class ChatState(rx.State):
         )
         self.messages.append({"text": "", "is_ai": True}) # AI placeholder
         self.processing = True
-        self.input_message = ""
+        # Input already cleared at the beginning of method
         # self.uploaded_file_name = "" # Clear after sending message, or manage lifecycle differently        # Keep uploaded file available for subsequent queries until manually cleared
 
         return ChatState.generate_response
@@ -274,3 +277,78 @@ class ChatState(rx.State):
                 # self.tasks_active = False
                 # If uploaded_file_name was for a single message context, clear it:
                 # self.clear_uploaded_file() # Keep file context available for subsequent queries
+
+    @rx.event
+    def clear_input(self):
+        """Clear the input message field"""
+        self.input_message = ""
+
+    @rx.event
+    def on_enter(self):
+        """On enter, send the message and prevent default behavior."""
+        yield rx.call_script("event.preventDefault()")
+        yield ChatState.handle_send_message
+
+    @rx.event  
+    def handle_send_message(self):
+        """Handle sending message with proper input clearing"""
+        user_input = self.input_message.strip()
+        if not user_input and not (self.explain_active or self.tasks_active or self.uploaded_file_name):
+            return
+        
+        yield ChatState.clear_input
+        yield self.send_message_with_text(user_input)
+
+    @rx.event
+    def send_message_with_text(self, user_text: str):
+        """Send message with the provided text"""
+        final_message_parts = []
+        
+        # File context is automatically retrieved by backend using uploaded_file_context_name
+        if self.uploaded_file_name:
+            final_message_parts.append(
+                f"[File context: {self.uploaded_file_name}]"
+            )
+        
+        # Backend handles explain_active and tasks_active flags automatically
+        if self.explain_active:
+            final_message_parts.append(
+                "[Request: Explain conversation history]"
+            )
+        if self.tasks_active:
+            final_message_parts.append(
+                "[Request: Generate tasks based on conversation history]"
+            )
+
+        if user_text:
+            if self.explain_active or self.tasks_active:
+                final_message_parts.append(
+                    f"[Focusing on: {user_text}]"
+                )
+            else:
+                final_message_parts.append(user_text)
+        
+        full_user_message = " ".join(
+            final_message_parts
+        ).strip()
+
+        if not full_user_message:
+            # Allow sending if explain, tasks, or file is active even with empty input_message
+            if not (
+                self.explain_active
+                or self.tasks_active
+                or self.uploaded_file_name
+            ):
+                return
+
+        if self.processing:
+            return
+
+        self._ensure_session_id()
+        self.messages.append(
+            {"text": full_user_message, "is_ai": False}
+        )
+        self.messages.append({"text": "", "is_ai": True}) # AI placeholder
+        self.processing = True
+        
+        return ChatState.generate_response
