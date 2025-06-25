@@ -16,7 +16,7 @@ dependencies = [
     "tiktoken>=0.9.0",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 fastapi = [
     "chromadb>=1.0.4",
     "fastapi[standard]>=0.115.9",
@@ -51,10 +51,4 @@ dev = [
     "pypdf2>=3.0.1",
     "langchain-google-genai>=2.0.10",
     "pydantic>=2.11.3",
-]
-
-[dependency-groups]
-dev = [
-    "pyinstaller>=6.14.1",
-    
 ]
