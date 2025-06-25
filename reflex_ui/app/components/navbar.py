@@ -51,7 +51,9 @@ def navbar_link(
     inactive_height = NAVBAR_CONFIG["first_step_height"] if step_number == 1 else NAVBAR_CONFIG["inactive_height"]
     # Conditional width for steps 2 and 3 when inactive
     inactive_max_width = "6vh" if step_number in [2, 3] else "12vh"
-    alt_text = text or f"Step {step_number}" if step_number else "Navigation icon"# Common link styles - position relative for z-index layering
+    alt_text = text or f"Step {step_number}" if step_number else "Navigation icon"
+    
+    # Common link styles
     link_styles = {
         "href": url,
         "height": "5.8vh",  # Fill the full navbar height
@@ -63,9 +65,7 @@ def navbar_link(
         "position": "relative",
     }
     
-    if step_number is not None:        
-        # Link with active/inactive states using pure Reflex styling
-        
+    if step_number is not None:
         # Base SVG image properties for inactive state
         base_image_props = get_common_image_props(
             src=default_image_src,
@@ -77,8 +77,7 @@ def navbar_link(
         # Create the inactive SVG image
         inactive_svg_image = rx.image(**base_image_props)
         
-        # Create larger SVG image properties for active state
-        active_height = "2vh" if step_number == 1 else "7vh"
+        active_height = "1.5vh" if step_number == 1 else "7vh"
         active_width = "10vh" if step_number in [2, 3] else "15vh"
         active_image_props = get_common_image_props(
             src=default_image_src,
@@ -87,14 +86,12 @@ def navbar_link(
             width=active_width,
         )
         
-        # Create the active SVG image (larger)
+        # Create the active SVG image
         active_svg_image = rx.image(**active_image_props)
         
-        # Determine border styles based on position
         left_border = get_border_style() if step_number == 1 else "none"
         right_border = get_border_style() if step_number == NAVBAR_CONFIG["step_count"] else "none"
         
-        # Add separator border for inactive steps (except the last one)
         separator_border = "none"
         if step_number < NAVBAR_CONFIG["step_count"]:
             separator_border = f"1px solid {NAVBAR_CONFIG['border_color']}"
@@ -102,7 +99,7 @@ def navbar_link(
         return rx.link(
             rx.cond(
                 State.current_step == step_number,
-                # Active state: larger SVG wrapped in styled container with white background
+                # Active state
                 rx.box(
                     active_svg_image,
                     background_color="white",
@@ -116,7 +113,7 @@ def navbar_link(
                     align_items="center",
                     justify_content="center",
                 ),
-                # Inactive state: regular sized SVG
+                # Inactive state
                 inactive_svg_image,
             ),
             **link_styles,
@@ -124,28 +121,25 @@ def navbar_link(
             padding_x="0",
             border_left=rx.cond(
                 State.current_step == step_number,
-                "none",  # Remove left border when step is active
+                "none",
                 left_border
             ),
             border_right=rx.cond(
                 State.current_step == step_number,
-                "none",  # Active step has no right border to allow seamless appearance
+                "none",
                 rx.cond(
-                    # Also remove right border if the next step is active (to prevent left border appearance on active step)
                     State.current_step == step_number + 1,
                     "none",
                     rx.cond(
                         step_number < NAVBAR_CONFIG["step_count"],
-                        separator_border,  # Add separator for inactive steps
-                        right_border  # Right border only for last step
+                        separator_border,
+                        right_border
                     )
                 )
             ),
-            # Active state gets elevated appearance
             z_index=rx.cond(State.current_step == step_number, "10", "1"),
         )
     elif default_image_src:
-        # Image-only link
         image_props = get_common_image_props(
             src=default_image_src,
             alt_text=alt_text,
@@ -160,7 +154,6 @@ def navbar_link(
             **link_styles,
         )
     else:
-        # Text-only link
         return rx.link(
             rx.text(text, size="4", weight="medium"), 
             href=url
@@ -172,16 +165,15 @@ def create_step_link(step_number: int) -> rx.Component:
     return navbar_link(
         url="/#", 
         default_image_src=f"/step{step_number}.svg", 
-        active_image_src=None,  # We'll use pure Reflex styling instead
+        active_image_src=None,
         step_number=step_number, 
         text=STEP_DESCRIPTION.get(step_number, f"Step {step_number}")
     )
 
 def navbar() -> rx.Component:
     """Renders the navigation bar with step indicators."""
-    # Generate step links dynamically
     step_links = [create_step_link(i) for i in range(1, NAVBAR_CONFIG["step_count"] + 1)]
-    # Navbar container styles
+    
     navbar_styles = {
         "bg": NAVBAR_CONFIG["background_color"],
         "padding": "0",
@@ -193,7 +185,7 @@ def navbar() -> rx.Component:
         "border_bottom": get_border_style(),
         "height": "6vh",
     }
-      # Content container styles
+    
     content_styles = {
         "width": "100%",
         "align_items": "center",
@@ -201,13 +193,13 @@ def navbar() -> rx.Component:
         "padding": "0vh",
         "justify_content": "center",
     }
-      # Step container styles
+    
     step_container_styles = {
         "justify": "between",
         "spacing": "0",
         "width": "70%",
-        "height": "100%",  # Fill the full container height
-        "align_items": "stretch",  # Stretch children to fill height
+        "height": "100%",
+        "align_items": "stretch",
     }
     
     return rx.box(
