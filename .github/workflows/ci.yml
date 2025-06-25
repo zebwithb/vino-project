@@ -37,7 +37,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv sync --locked
+          uv sync --locked --all-extras --dev
           uv pip install pytest ruff python-dotenv
 
       - name: Create .env file for testing
