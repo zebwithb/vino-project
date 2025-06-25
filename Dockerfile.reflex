@@ -19,7 +19,7 @@ COPY . .
 
 # Install Python dependencies
 ENV UV_PROJECT_ENVIRONMENT=/usr/local
-RUN uv sync --locked
+RUN uv sync --locked --extra reflex
 
 # Initialize Reflex
 WORKDIR /app/reflex_ui

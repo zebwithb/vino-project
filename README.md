@@ -176,7 +176,7 @@ Make sure the ENVIRONMENT VARIABLES are set up correctly for terminal/CLI use.
 4. **Install dependencies**
 
    ```bash
-   uv sync
+   uv sync --all-extras
    ```
 
 5. **Set up environment variables**
