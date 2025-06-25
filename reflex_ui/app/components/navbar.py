@@ -63,28 +63,25 @@ def navbar_link(
         "position": "relative",
     }
     
-    if active_image_src and step_number is not None:        # Link with active/inactive states        
-        active_image_props = get_common_image_props(
-            src=active_image_src,
-            alt_text=alt_text,            
-            height=NAVBAR_CONFIG["active_height"],
-            width="100%",
-            max_width="25vh",   
-            )
+    if step_number is not None:        
+        # Link with active/inactive states using pure Reflex styling
         
-        inactive_image_props = get_common_image_props(
+        # Base SVG image properties
+        base_image_props = get_common_image_props(
             src=default_image_src,
             alt_text=alt_text,
-            height=inactive_height,  # Fill the full container height
-            max_width=inactive_max_width,  # Use conditional width
-            padding_x="1.5vh",  # Reduced padding for better fill
-            padding_y="0.5vh"   # Add some vertical padding
+            height=inactive_height,
+            width=inactive_max_width,
         )
+        
+        # Create the SVG image
+        svg_image = rx.image(**base_image_props)
         
         # Determine border styles based on position
         left_border = get_border_style() if step_number == 1 else "none"
         right_border = get_border_style() if step_number == NAVBAR_CONFIG["step_count"] else "none"
-          # Add separator border for inactive steps (except the last one)
+        
+        # Add separator border for inactive steps (except the last one)
         separator_border = "none"
         if step_number < NAVBAR_CONFIG["step_count"]:
             separator_border = f"1px solid {NAVBAR_CONFIG['border_color']}"
@@ -92,10 +89,22 @@ def navbar_link(
         return rx.link(
             rx.cond(
                 State.current_step == step_number,
-                # Active state: larger image, no extra borders
-                rx.image(**active_image_props),
-                # Inactive state: normal image
-                rx.image(**inactive_image_props),
+                # Active state: SVG wrapped in styled container with white background
+                rx.box(
+                    svg_image,
+                    background_color="white",
+                    border_radius="12px",
+                    padding="10px",
+                    box_shadow="0 2px 8px rgba(0, 0, 0, 0.1)",
+                    border="1px solid #7a7a7a",
+                    width="120%",
+                    height="100px",
+                    display="flex",
+                    align_items="center",
+                    justify_content="center",
+                ),
+                # Inactive state: just the SVG
+                svg_image,
             ),
             **link_styles,
             on_click=State.set_current_step(step_number),
@@ -112,11 +121,6 @@ def navbar_link(
             ),
             # Active state gets elevated appearance
             z_index=rx.cond(State.current_step == step_number, "10", "1"),
-            box_shadow=rx.cond(
-                State.current_step == step_number,
-                "0 2px 8px rgba(59, 130, 246, 0.3)",
-                "none"
-            ),
         )
     elif default_image_src:
         # Image-only link
@@ -146,7 +150,7 @@ def create_step_link(step_number: int) -> rx.Component:
     return navbar_link(
         url="/#", 
         default_image_src=f"/step{step_number}.svg", 
-        active_image_src=f"/step{step_number}_active.png", 
+        active_image_src=None,  # We'll use pure Reflex styling instead
         step_number=step_number, 
         text=STEP_DESCRIPTION.get(step_number, f"Step {step_number}")
     )
