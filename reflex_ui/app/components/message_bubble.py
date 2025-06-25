@@ -26,11 +26,13 @@ def user_message_bubble(message_text: str) -> rx.Component:
         rx.el.div(
             rx.el.p(
                 message_text, 
-                class_name="text-sm sm:text-base text-white",
+                class_name="text-sm sm:text-base text-slate-800 text-right",
             ),
-            class_name="bg-sky-500 p-3 rounded-xl shadow-sm",
+            class_name="p-3 rounded-xl shadow-sm",
+            style={"background_color": "#f0f0f0", "min_width": "150px", "max_width": "80%"},
         ),
         class_name="flex items-start gap-3 w-full max-w-2xl justify-end",
+        style={"min_width": "20%"},
     )
 
 
