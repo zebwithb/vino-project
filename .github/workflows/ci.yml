@@ -69,7 +69,7 @@ jobs:
   integration-test:
     runs-on: ubuntu-latest
     needs: docker-build
-    # Set the secret as an environment variable for the whole job
+    environment: production
     env:
       GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
     steps:
