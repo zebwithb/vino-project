@@ -1,0 +1,48 @@
+# This file is dedicated for the CI/CD integration testing environment.
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile.fastapi
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env # Loads the .env file created in the CI step
+    volumes:
+      - ./data:/app/data
+      - ./documents:/app/documents
+      - chromadb_data:/app/data/chroma
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.reflex
+    # This command overrides the default to save build time in CI
+    command: ["echo", "Frontend service placeholder for CI"]
+    networks:
+      - app-network
+
+volumes:
+  chromadb_data:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge

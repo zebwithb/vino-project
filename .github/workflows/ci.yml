@@ -82,10 +82,8 @@ jobs:
 
       - name: Build and start services
         run: |
-          docker compose --profile all build
-          docker compose --profile all up -d
-        env:
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          docker compose -f docker-compose.ci.yml build
+          docker compose -f docker-compose.ci.yml up -d
 
       - name: Wait for services to be ready
         run: |
@@ -98,10 +96,10 @@ jobs:
             fi
             
             # Check for API key error in logs
-            if docker compose --profile all logs fastapi 2>/dev/null | grep -q "API key not found"; then
+            if docker compose -f docker-compose.ci.yml logs fastapi 2>/dev/null | grep -q "API key not found"; then
               echo "❌ FastAPI failed to start: API key not found"
               echo "=== FastAPI Logs ==="
-              docker compose --profile all logs fastapi
+              docker compose -f docker-compose.ci.yml logs fastapi
               exit 1
             fi
             
@@ -113,7 +111,7 @@ jobs:
           if ! curl -sf http://localhost:8000/health > /dev/null 2>&1; then
             echo "❌ FastAPI failed to start after 120 seconds"
             echo "=== FastAPI Logs ==="
-            docker compose --profile all logs fastapi
+            docker compose -f docker-compose.ci.yml logs fastapi
             exit 1
           fi
           
@@ -141,11 +139,11 @@ jobs:
         if: failure()
         run: |
           echo "=== FastAPI Logs ==="
-          docker compose --profile all logs fastapi
+          docker compose -f docker-compose.ci.yml logs fastapi
           echo "=== Redis Logs ==="
-          docker compose --profile all logs redis
+          docker compose -f docker-compose.ci.yml logs redis
           echo "=== Frontend Logs ==="
-          docker compose --profile all logs frontend
+          docker compose -f docker-compose.ci.yml logs frontend
 
       - name: Cleanup
         if: always()
