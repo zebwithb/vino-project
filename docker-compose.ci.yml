@@ -13,6 +13,9 @@ services:
       - app-network
 
   fastapi:
+    # Use the image tag from the environment variable
+    image: ${FASTAPI_IMAGE_TAG}
+    # The build context is now ignored because 'image' is specified
     build:
       context: .
       dockerfile: Dockerfile.fastapi
@@ -35,6 +38,8 @@ services:
       - app-network
 
   frontend:
+    # Use the image tag from the environment variable
+    image: ${REFLEX_IMAGE_TAG}
     build:
       context: .
       dockerfile: Dockerfile.reflex

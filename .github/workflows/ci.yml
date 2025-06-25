@@ -59,9 +59,22 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Define image tag
+        id: image_tag
+        run: echo "tag=vino-${{ matrix.service }}:${{ github.sha }}" >> $GITHUB_OUTPUT
+
       - name: Build ${{ matrix.service }} Docker image
         run: |
-          docker build -f Dockerfile.${{ matrix.service }} -t vino-${{ matrix.service }}:latest .
+          docker build -f Dockerfile.${{ matrix.service }} -t ${{ steps.image_tag.outputs.tag }} .
+
+      - name: Save Docker image to a file
+        run: docker save ${{ steps.image_tag.outputs.tag }} -o ${{ matrix.service }}.tar
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.service }}-image
+          path: ${{ matrix.service }}.tar
 
   # Integration Test with Docker Compose
   integration-test:
@@ -70,14 +83,31 @@ jobs:
     environment: production
     env:
       GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      # Define image tags to be used by Docker Compose
+      FASTAPI_IMAGE_TAG: vino-fastapi:${{ github.sha }}
+      REFLEX_IMAGE_TAG: vino-reflex:${{ github.sha }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build and start services
+      - name: Download FastAPI image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: fastapi-image
+
+      - name: Download Reflex image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: reflex-image
+
+      - name: Load Docker images
         run: |
-          # The GOOGLE_API_KEY from the job's env is now available to docker compose
-          docker compose -f docker-compose.ci.yml build
+          docker load -i fastapi.tar
+          docker load -i reflex.tar
+
+      - name: Start services using pre-built images
+        run: |
+          # The environment variables will tell docker-compose which images to use
           docker compose -f docker-compose.ci.yml up -d
 
       - name: Wait for services to be ready
