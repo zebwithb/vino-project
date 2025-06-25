@@ -292,16 +292,12 @@ class ChatState(rx.State):
     @rx.event  
     def handle_send_message(self):
         """Handle sending message with proper input clearing"""
-        if not self.input_message.strip() and not (self.explain_active or self.tasks_active or self.uploaded_file_name):
+        user_input = self.input_message.strip()
+        if not user_input and not (self.explain_active or self.tasks_active or self.uploaded_file_name):
             return
         
-        # Store the input before clearing
-        user_input = self.input_message.strip()
-        # Clear input immediately
-        self.input_message = ""
-        
-        # Call the actual send logic
-        return self.send_message_with_text(user_input)
+        yield ChatState.clear_input
+        yield self.send_message_with_text(user_input)
 
     @rx.event
     def send_message_with_text(self, user_text: str):
