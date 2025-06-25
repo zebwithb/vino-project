@@ -2,21 +2,14 @@ import reflex as rx
 from app.states.chat_state import ChatState # Ensure ChatState is accessible
 from app.components.chat_interface import input_area # Import the input_area
 from app.components.navbar import navbar
+from app.components.message_bubble import message_display
 
 # Placeholder for a component that would display the chat messages
 def message_display_area() -> rx.Component:
     return rx.vstack(
         rx.foreach(
             ChatState.messages,
-            lambda message: rx.box(
-                rx.text(message["text"]),
-                # Add styling based on message["is_ai"]
-                align_self=rx.cond(message["is_ai"], "start", "end"),
-                bg=rx.cond(message["is_ai"], "gray.100", "blue.100"),
-                padding="0.5rem",
-                border_radius="lg",
-                max_width="70%",
-            ),
+            lambda message, idx: message_display(message, idx),
         ),
         align_items="stretch",
         spacing="1",
