@@ -55,7 +55,7 @@ def input_area() -> rx.Component:
                     on_change=ChatState.set_input_message,
                     on_key_down=lambda key: rx.cond(
                         key == "Enter",
-                        ChatState.handle_send_message,
+                        ChatState.on_enter,
                         rx.noop()
                     ),
                     class_name="flex-grow p-3 bg-white border border-[#7a7a7a] rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-sky-400 min-h-[60px] max-h-40 text-slate-800 placeholder-slate-400 text-sm",
@@ -151,7 +151,7 @@ def input_area() -> rx.Component:
                 ),
             ),
             on_submit=ChatState.handle_send_message,
-            reset_on_submit=False,
+            reset_on_submit=True,
             class_name="w-full",
         ),
         rx.cond(

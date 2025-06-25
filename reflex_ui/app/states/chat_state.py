@@ -283,6 +283,12 @@ class ChatState(rx.State):
         """Clear the input message field"""
         self.input_message = ""
 
+    @rx.event
+    def on_enter(self):
+        """On enter, send the message and prevent default behavior."""
+        yield rx.call_script("event.preventDefault()")
+        yield ChatState.handle_send_message
+
     @rx.event  
     def handle_send_message(self):
         """Handle sending message with proper input clearing"""
