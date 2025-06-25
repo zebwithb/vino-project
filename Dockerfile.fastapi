@@ -16,8 +16,7 @@ ENV PATH="/root/.local/bin/:$PATH"
 WORKDIR /app
 
 # Copy FastAPI source code
-COPY src/ ./src/
-COPY pyproject.toml uv.lock ./src/
+COPY src/ pyproject.toml uv.lock ./
 
 # Install Python dependencies
 ENV UV_PROJECT_ENVIRONMENT=/usr/local
