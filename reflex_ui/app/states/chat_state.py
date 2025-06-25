@@ -44,6 +44,11 @@ class ChatState(rx.State):
     def has_session(self) -> bool:
         return self.session_id is not None
 
+    @rx.var
+    def message_count(self) -> int:
+        """Get the current message count - useful for triggering scroll effects"""
+        return len(self.messages)
+
     @rx.event
     def toggle_prompt_toolbox(self):
         self.show_prompt_toolbox = (
@@ -253,6 +258,9 @@ class ChatState(rx.State):
                 # For example, if a task generation completes, tasks_active might be set to False by the backend.
                 # self.explain_active = response_data.get("explain_active_status", self.explain_active)
                 # self.tasks_active = response_data.get("tasks_active_status", self.tasks_active)
+                
+            # Scroll to bottom after AI response is complete
+            yield ChatState.scroll_to_bottom
 
         except httpx.HTTPStatusError as e:
             error_detail = e.response.text
@@ -264,12 +272,15 @@ class ChatState(rx.State):
                 pass 
             async with self:
                 self.messages[-1]["text"] = f"Error communicating with VINO API: {e.response.status_code} - {error_detail}"
+            yield ChatState.scroll_to_bottom
         except httpx.RequestError as e:
             async with self:
                 self.messages[-1]["text"] = f"Network error calling VINO API: {str(e)}"
+            yield ChatState.scroll_to_bottom
         except Exception as e:
             async with self:
                 self.messages[-1]["text"] = f"An unexpected error occurred: {str(e)}"
+            yield ChatState.scroll_to_bottom
         finally:
             async with self:
                 self.processing = False
@@ -297,7 +308,7 @@ class ChatState(rx.State):
             return
         
         yield ChatState.clear_input
-        yield self.send_message_with_text(user_input)
+        return ChatState.send_message_with_text(user_input)
 
     @rx.event
     def send_message_with_text(self, user_text: str):
@@ -351,4 +362,27 @@ class ChatState(rx.State):
         self.messages.append({"text": "", "is_ai": True}) # AI placeholder
         self.processing = True
         
+        # Scroll to bottom after adding messages
+        yield ChatState.scroll_to_bottom
         return ChatState.generate_response
+
+    @rx.event
+    def scroll_to_bottom(self):
+        """Scroll the message container to the bottom"""
+        return rx.call_script(
+            """
+            // Function to scroll to bottom
+            function scrollToBottom() {
+                const messageContainer = document.getElementById('message-container');
+                if (messageContainer) {
+                    messageContainer.scrollTop = messageContainer.scrollHeight;
+                }
+            }
+            
+            // Try multiple times with increasing delays to ensure DOM is ready
+            scrollToBottom(); // Immediate
+            setTimeout(scrollToBottom, 50);  // After 50ms
+            setTimeout(scrollToBottom, 200); // After 200ms
+            setTimeout(scrollToBottom, 500); // After 500ms to be really sure
+            """
+        )

@@ -10,6 +10,11 @@ def input_area() -> rx.Component:
                     default_value=ChatState.input_message,
                     placeholder="Type your message...",
                     on_change=ChatState.set_input_message,
+                    on_key_down=lambda key, shift: rx.cond(
+                        (key == "Enter") & ~shift,
+                        ChatState.send_message_from_input,
+                        rx.noop()
+                    ),
                     class_name="flex-grow p-3 bg-white border border-slate-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-sky-400 min-h-[48px] max-h-40 text-slate-800 placeholder-slate-400",
                 ),
                 rx.el.button(
