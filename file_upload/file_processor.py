@@ -22,11 +22,11 @@ src_dir = current_dir.parent / "src"
 sys.path.insert(0, str(src_dir))
 
 try:
-    from app.services.ingestion_service import IngestionService
-    from app.services.vector_db_service import VectorDBService
-    from app.services.supabase_service import SupabaseService
-    from app.services.file_system_service import FileSystemService
-    from app.core.config import Settings
+    from src.app.services.ingestion_service import IngestionService
+    from src.app.services.vector_db_service import VectorDBService
+    from src.app.services.supabase_service import SupabaseService
+    from src.app.services.file_system_service import FileSystemService
+    from src.app.core.config import Settings
 except ImportError as e:
     print(f"❌ Import Error: {e}")
     print("Make sure you're running this from the project root directory.")
