@@ -14,3 +14,4 @@ assets/external/
 /chromadb/chroma.sqlite3
 /reflex_ui/.web
 /reflex_ui/.states
+build/

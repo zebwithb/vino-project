@@ -69,7 +69,7 @@ class ChatState(rx.State):
     def toggle_tasks(self):
         self.tasks_active = not self.tasks_active
 
-    @rx.event(background=True) # Keep background=True for file operations
+    @rx.event
     async def handle_upload(
         self, files: list[rx.UploadFile]
     ):
@@ -84,7 +84,7 @@ class ChatState(rx.State):
                 # Prepare the file for upload to FastAPI
                 api_files = {'file': (file.filename, upload_data, file.content_type or 'application/octet-stream')}
                 response = await client.post(
-                    f"{FASTAPI_BASE_URL}/upload_document", 
+                    f"{FASTAPI_BASE_URL}/v1/upload_document", 
                     files=api_files, 
                     timeout=60.0
                 )
@@ -93,10 +93,9 @@ class ChatState(rx.State):
                 # Get response data from FastAPI
                 upload_response_data = response.json()
                 
-                async with self:
-                    self.uploaded_file_name = upload_response_data.get("filename", file.filename)
-                    print(f"File '{self.uploaded_file_name}' successfully uploaded to FastAPI backend.")
-                    
+                self.uploaded_file_name = upload_response_data.get("filename", file.filename)
+                print(f"File '{self.uploaded_file_name}' successfully uploaded to FastAPI backend.")
+                
             except httpx.HTTPStatusError as e:
                 error_detail = e.response.text
                 try:
@@ -107,20 +106,17 @@ class ChatState(rx.State):
                     pass
                 
                 print(f"HTTP error uploading file to FastAPI: {e.response.status_code} - {error_detail}")
-                async with self:
-                    self.uploaded_file_name = f"Error uploading {file.filename}: {error_detail}"
+                self.uploaded_file_name = f"Error uploading {file.filename}: {error_detail}"
                 return
                 
             except httpx.RequestError as e:
                 print(f"Network error uploading file to FastAPI: {str(e)}")
-                async with self:
-                    self.uploaded_file_name = f"Network error uploading {file.filename}"
+                self.uploaded_file_name = f"Network error uploading {file.filename}"
                 return
                 
             except Exception as e:
                 print(f"Unexpected error uploading file to FastAPI: {e}")
-                async with self:
-                    self.uploaded_file_name = f"Error uploading {file.filename}"
+                self.uploaded_file_name = f"Error uploading {file.filename}"
                 return
 
 

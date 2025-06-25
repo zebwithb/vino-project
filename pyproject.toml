@@ -7,10 +7,10 @@ requires-python = ">=3.12"
 
 # Core dependencies shared by all services (if any)
 dependencies = [
-    "python-dotenv>=1.1.0",
+    "python-dotenv>=1.1.0"
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 fastapi = [
     "chromadb>=1.0.4",
     "fastapi[standard]>=0.115.9",
@@ -35,4 +35,14 @@ reflex = [
 dev = [
     "ruff>=0.11.12",
     "pytest>=8.4.0",
+    "pyinstaller>=6.0.0",
+    "supabase>=2.15.3",
+    "tiktoken>=0.9.0",
+    "chromadb>=1.0.12",
+    "fastapi[standard]>=0.115.9",
+    "google-generativeai>=0.8.5",
+    "pypandoc>=1.15",
+    "pypdf2>=3.0.1",
+    "langchain-google-genai>=2.0.10",
+    "pydantic>=2.11.3",
 ]
