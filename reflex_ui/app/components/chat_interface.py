@@ -50,12 +50,12 @@ def input_area() -> rx.Component:
         ),
         rx.el.form(              
             rx.el.div(                rx.el.textarea(
-                    default_value=ChatState.input_message,
+                    value=ChatState.input_message,
                     placeholder="Ask Vino AI...",
                     on_change=ChatState.set_input_message,
                     on_key_down=lambda key: rx.cond(
                         key == "Enter",
-                        ChatState.send_message_from_input,
+                        ChatState.handle_send_message,
                         rx.noop()
                     ),
                     class_name="flex-grow p-3 bg-white border border-[#7a7a7a] rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-sky-400 min-h-[60px] max-h-40 text-slate-800 placeholder-slate-400 text-sm",
@@ -150,8 +150,8 @@ def input_area() -> rx.Component:
                     class_name="flex items-center justify-between gap-2 px-4 mt-2 py-1 bg-slate-100 border border-slate-200 rounded-md text-xs",
                 ),
             ),
-            on_submit=ChatState.send_message_from_input,
-            reset_on_submit=False, 
+            on_submit=ChatState.handle_send_message,
+            reset_on_submit=False,
             class_name="w-full",
         ),
         rx.cond(
