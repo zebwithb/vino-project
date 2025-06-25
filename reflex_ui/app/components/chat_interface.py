@@ -31,22 +31,38 @@ def alignment_radio_option(
 
 def input_area() -> rx.Component:
     return rx.el.div(
-        rx.el.div(            rx.el.button(                rx.icon(
-                    "box-select", size=16, class_name="mr-2"
-                ),
-                "Prompt Toolbox",
-                on_click=ChatState.toggle_prompt_toolbox,
-                class_name="px-3 py-2 text-sm font-medium text-slate-700 bg-white border rounded-lg hover:bg-slate-50 flex items-center whitespace-nowrap",
-                style={"border_color": "#7a7a7a"},
-            ),
+        rx.el.div(
             rx.el.div(
-                rx.foreach(
-                    ChatState.alignment_options,
-                    alignment_radio_option,
+                rx.el.button(
+                    rx.icon(
+                        "box-select", size=16, class_name="mr-2"
+                    ),
+                    "Prompt Toolbox",
+                    on_click=ChatState.toggle_prompt_toolbox,
+                    class_name="px-3 py-1 text-sm font-medium text-slate-700 bg-white border rounded-lg hover:bg-slate-50 flex items-center whitespace-nowrap",
+                    style={"border_color": "#7a7a7a"},
                 ),
-                class_name="flex flex-wrap items-center gap-x-4 gap-y-2",
+                rx.el.div(
+                    rx.foreach(
+                        ChatState.alignment_options,
+                        alignment_radio_option,
+                    ),
+                    class_name="flex flex-wrap items-center gap-x-4 gap-y-2",
+                ),
+                class_name="flex flex-col sm:flex-row items-center gap-3",
             ),
-            class_name="flex flex-col sm:flex-row items-center gap-3 mb-3 px-4 pt-3",
+            rx.cond(
+                ChatState.messages.length() > 0,
+                rx.el.button(
+                    rx.icon(
+                        "trash-2", size=14, class_name="mr-1"
+                    ),
+                    "Clear Chat",
+                    on_click=ChatState.clear_messages,
+                    class_name="px-2 py-1 text-xs text-slate-500 hover:text-red-500 flex items-center transition-colors border border-slate-300 rounded-lg hover:bg-slate-50",
+                ),
+            ),
+            class_name="flex justify-between items-center mb-3 px-4 pt-3",
         ),
         rx.el.form(              
             rx.el.div(                rx.el.textarea(
@@ -128,7 +144,7 @@ def input_area() -> rx.Component:
                     ),
                     class_name="p-2.5 bg-sky-500 text-white rounded-lg hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0 ml-auto",
                 ),
-                class_name="flex items-center gap-2 px-4 mt-2",
+                class_name="flex items-center gap-2 px-4 mt-2 mb-3",
             ),
             rx.cond(
                 ChatState.uploaded_file_name != "",
@@ -154,16 +170,6 @@ def input_area() -> rx.Component:
             reset_on_submit=True,
             class_name="w-full",
         ),
-        rx.cond(
-            ChatState.messages.length() > 0,
-            rx.el.button(
-                rx.icon(
-                    "trash-2", size=14, class_name="mr-1"
-                ),
-                "Clear Chat",
-                on_click=ChatState.clear_messages,
-                class_name="mt-3 mb-1 text-xs text-slate-500 hover:text-red-500 flex items-center self-center transition-colors",
-            ),        ),
         class_name="sticky bottom-0 left-0 right-0 py-3 backdrop-blur-md flex flex-col rounded-2xl shadow-lg",
         style={
             "background_color": "#f0f0f0", 
