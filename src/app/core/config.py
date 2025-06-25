@@ -32,7 +32,7 @@ class Settings:
         self.SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
         
         # --- LLM CONFIG ---
-        self.LLM_MODEL_NAME = "gemini-1.5-pro"
+        self.LLM_MODEL_NAME = "gemini-1.5-flash"
         self.LLM_TEMPERATURE = 0
         self.LLM_MAX_TOKENS = None
         self.LLM_TIMEOUT = None
