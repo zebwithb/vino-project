@@ -53,6 +53,11 @@ def input_area() -> rx.Component:
                     default_value=ChatState.input_message,
                     placeholder="Ask Vino AI...",
                     on_change=ChatState.set_input_message,
+                    on_key_down=lambda key: rx.cond(
+                        key == "Enter",
+                        ChatState.send_message_from_input,
+                        rx.noop()
+                    ),
                     class_name="flex-grow p-3 bg-white border border-[#7a7a7a] rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-sky-400 min-h-[60px] max-h-40 text-slate-800 placeholder-slate-400 text-sm",
                 ),
                 class_name="flex items-end gap-2 px-4",
