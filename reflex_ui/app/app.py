@@ -24,6 +24,7 @@ def message_display_area() -> rx.Component:
         width="100%",
         flex_grow="1", # Allows this area to take available space
         overflow_y="auto", # Make messages scrollable
+        max_height="100%", # Ensure it doesn't exceed container height
     )
 
 def vino_chat_page() -> rx.Component:
@@ -31,20 +32,31 @@ def vino_chat_page() -> rx.Component:
     A page that displays the chat interface.
     """
     return rx.box(
-        rx.vstack(
-            navbar(), # Navigation bar component
-            message_display_area(),  # Your component to display messages
-            input_area(),            # The input area from your chat_interface.py
-            spacing="0",
-            align_items="stretch",
-            width="100%",
-            height="100vh", 
-            bg="white"
+        navbar(), # Navigation bar component - fixed position
+        rx.box(
+            rx.vstack(
+                message_display_area(),  # Your component to display messages
+                input_area(),            # The input area from your chat_interface.py
+                spacing="0",
+                align_items="stretch",
+                width="100%",
+                height="100%",
+                bg="white"
+            ),
+            width="50%",
+            margin="0 auto",  
+            height="100%",
+            bg="white",
+            padding="1rem" 
         ),
-        width="50%",
-        height="100vh",
-        margin="0 auto",
-        bg="white"
+        position="fixed",
+        top="calc(3vh + 6vh)", 
+        left="0",
+        right="0",
+        bottom="0",
+        width="100%",
+        bg="white",
+        overflow="hidden"
     )
     
 app = rx.App(
