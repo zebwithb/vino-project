@@ -26,9 +26,9 @@ class IngestionService:
             supabase_service: Service for Supabase operations
             file_system_service: Service for file system operations
         """
-        self.vector_db_service = vector_db_service or VectorDBService()
-        self.supabase_service = supabase_service or SupabaseService()
-        self.file_system_service = file_system_service or FileSystemService(self.supabase_service)
+        self.vector_db_service = vector_db_service
+        self.supabase_service = supabase_service
+        self.file_system_service = file_system_service or FileSystemService(supabase_service)
 
 
     
@@ -107,7 +107,9 @@ class IngestionService:
                         **doc_meta.model_dump(),  # Document-specific metadata
                         **file_meta.model_dump()  # File-level metadata
                     }
-                    all_metadatas.append(combined_metadata)
+                    # Filter out None values as ChromaDB doesn't accept them
+                    filtered_metadata = {k: v for k, v in combined_metadata.items() if v is not None}
+                    all_metadatas.append(filtered_metadata)
                 
                 # Debug output if enabled
                 if settings.DEBUG_MODE:
@@ -145,7 +147,9 @@ class IngestionService:
             
             if not documents:
                 print(f"No documents were successfully processed from {from_dir}")
-                return False            # Step 2: Store in vector database
+                return False
+            
+            # Step 2: Store in vector database
             collection_name = settings.FRAMEWORKS_COLLECTION_NAME if source == "system_upload" else settings.USER_DOCUMENTS_COLLECTION_NAME
             self.vector_db_service.add_documents(collection_name, documents, metadatas, ids)
             
@@ -211,7 +215,8 @@ class IngestionService:
             # Determine collection
             if collection_name is None:
                 collection_name = settings.FRAMEWORKS_COLLECTION_NAME if source == "system_upload" else settings.USER_DOCUMENTS_COLLECTION_NAME
-              # Store in vector database
+            
+            # Store in vector database
             self.vector_db_service.add_documents(collection_name, documents, metadatas, ids)
             
             # Upload to Supabase (if available)

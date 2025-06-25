@@ -18,9 +18,9 @@ class Settings:
         self.CHROMA_DB_PATH = os.path.join(self.PROJECT_ROOT, "chromadb")
         self.DOCUMENTS_DIR = os.path.join(self.PROJECT_ROOT, "data", "framework_docs")
         self.USER_UPLOADS_DIR = os.path.join(self.PROJECT_ROOT, "data", "user_uploads")
-        self.NEW_DOCUMENTS_DIR = os.path.join(self.PROJECT_ROOT, "kb_new")
-        self.KB_DOCUMENTS_DIR = os.path.join(self.PROJECT_ROOT, "kb")
-        self.NEW_USER_UPLOADS_DIR = os.path.join(self.PROJECT_ROOT, "new_user_uploads")
+        self.NEW_DOCUMENTS_DIR = os.path.join(self.PROJECT_ROOT, "data", "kb_new")
+        self.KB_DOCUMENTS_DIR = os.path.join(self.PROJECT_ROOT, "data", "kb")
+        self.NEW_USER_UPLOADS_DIR = os.path.join(self.PROJECT_ROOT, "data", "new_user_uploads")
           # --- API KEYS ---
         raw_google_api_key = os.getenv("GOOGLE_API_KEY")
         if not raw_google_api_key:
