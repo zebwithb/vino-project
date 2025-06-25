@@ -34,3 +34,29 @@ button_style = dict(
     background_color=rx.color("accent", 10),
     box_shadow=shadow,
 )
+
+# Global styles for custom scrollbars
+scrollbar_style = {
+    # Webkit scrollbar styling (Chrome, Safari, Edge)
+    "::-webkit-scrollbar": {
+        "width": "6px",
+        "height": "6px",
+    },
+    "::-webkit-scrollbar-track": {
+        "background": "transparent",
+    },
+    "::-webkit-scrollbar-thumb": {
+        "background": "#cbd5e1",
+        "border-radius": "3px",
+        "transition": "background 0.2s ease",
+    },
+    "::-webkit-scrollbar-thumb:hover": {
+        "background": "#94a3b8",
+    },
+    "::-webkit-scrollbar-corner": {
+        "background": "transparent",
+    },
+    # Firefox scrollbar styling
+    "scrollbar-width": "thin",
+    "scrollbar-color": "#cbd5e1 transparent",
+}

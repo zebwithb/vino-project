@@ -28,6 +28,23 @@ def message_display_area() -> rx.Component:
         id="message-container",
         style={
             "scroll-behavior": "smooth",
+            # Custom scrollbar styling
+            "scrollbar-width": "thin",
+            "scrollbar-color": "#f0f0f0 transparent", 
+            # Webkit scrollbar styling
+            "&::-webkit-scrollbar": {
+                "width": "6px",
+            },
+            "&::-webkit-scrollbar-track": {
+                "background": "transparent",
+            },
+            "&::-webkit-scrollbar-thumb": {
+                "background": "#cbd5e1",
+                "border-radius": "3px",
+            },
+            "&::-webkit-scrollbar-thumb:hover": {
+                "background": "#94a3b8",
+            },
         },
         # Add an effect that triggers when message count changes
         on_mount=ChatState.scroll_to_bottom,
@@ -48,8 +65,11 @@ def vino_chat_page() -> rx.Component:
         rx.box(
             rx.vstack(
                 message_display_area(),  # Your component to display messages
-                input_area(),            # The input area from your chat_interface.py
-                spacing="0",
+                rx.box(
+                    input_area(),           
+                    margin_top="1vh",        
+                ),
+                spacing="0", 
                 align_items="stretch",
                 width="100%",
                 height="100%",
