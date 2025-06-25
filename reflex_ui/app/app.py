@@ -22,9 +22,21 @@ def message_display_area() -> rx.Component:
         spacing="1",
         padding="1rem",
         width="100%",
-        flex_grow="1", # Allows this area to take available space
-        overflow_y="auto", # Make messages scrollable
-        max_height="100%", # Ensure it doesn't exceed container height
+        flex_grow="1",
+        overflow_y="auto",
+        max_height="100%", 
+        id="message-container",
+        style={
+            "scroll-behavior": "smooth",
+        },
+        # Add an effect that triggers when message count changes
+        on_mount=ChatState.scroll_to_bottom,
+        # Use a key that changes when messages change to trigger re-render and scroll
+        key=ChatState.message_count,
+        # Add client-side script for auto-scrolling
+        custom_attrs={
+            "data-message-count": ChatState.message_count,
+        },
     )
 
 def vino_chat_page() -> rx.Component:
@@ -56,7 +68,8 @@ def vino_chat_page() -> rx.Component:
         bottom="0",
         width="100%",
         bg="white",
-        overflow="hidden"
+        overflow="hidden",
+        on_mount=ChatState.scroll_to_bottom,
     )
     
 app = rx.App(
@@ -74,6 +87,49 @@ app = rx.App(
         rx.el.link(
             href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
             rel="stylesheet",
+        ),
+        # Add a script for auto-scrolling
+        rx.el.script(
+            """
+            // Global observer for message container changes
+            document.addEventListener('DOMContentLoaded', function() {
+                let lastMessageCount = 0;
+                
+                function scrollToBottom() {
+                    const messageContainer = document.getElementById('message-container');
+                    if (messageContainer) {
+                        messageContainer.scrollTop = messageContainer.scrollHeight;
+                    }
+                }
+                
+                // Observer for attribute changes (message count)
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.type === 'attributes' && mutation.attributeName === 'data-message-count') {
+                            const newCount = parseInt(mutation.target.getAttribute('data-message-count') || '0');
+                            if (newCount > lastMessageCount) {
+                                lastMessageCount = newCount;
+                                setTimeout(scrollToBottom, 100);
+                            }
+                        }
+                    });
+                });
+                
+                // Start observing when container is available
+                function startObserving() {
+                    const messageContainer = document.getElementById('message-container');
+                    if (messageContainer) {
+                        observer.observe(messageContainer, { attributes: true });
+                        // Initial scroll to bottom
+                        setTimeout(scrollToBottom, 500);
+                    } else {
+                        setTimeout(startObserving, 100);
+                    }
+                }
+                
+                startObserving();
+            });
+            """
         ),
     ],
 )
