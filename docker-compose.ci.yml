@@ -21,8 +21,12 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    env_file:
-      - .env # Loads the .env file created in the CI step
+    environment:
+      # This tells compose to get the value from the shell and set it in the container.
+      - GOOGLE_API_KEY
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CHROMA_PERSIST_DIRECTORY=/app/data/chroma
     volumes:
       - ./data:/app/data
       - ./documents:/app/documents
@@ -34,7 +38,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.reflex
-    # This command overrides the default to save build time in CI
     command: ["echo", "Frontend service placeholder for CI"]
     networks:
       - app-network
