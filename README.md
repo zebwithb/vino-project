@@ -29,10 +29,21 @@ This project was developed through four major phases to achieve production readi
 
 ### **Phase 4: Production Session Management**
 
-- ✅ Persistent session storage using Supabase
+- ✅ Persistent session storage using Redis with optional Supabase backend
 - ✅ Stateless application design for horizontal scaling
 - ✅ Session lifecycle management and cleanup
 - ✅ Admin endpoints for session monitoring
+
+### **Phase 5: UI/UX Focus**
+
+These features are to be implemented, reviewed and depent on future decisions.
+
+- Dynamic Context Switching
+- Knowledge Base Architecture for Context Management
+- Summarization techniques for different levels of Abstraction in Text
+- UM Graph Overview, or other overview methods for better context management
+- User Friendly features like file management and organization interfaces
+- Local LLM Inference endpoint support
 
 ## Features
 
@@ -41,7 +52,7 @@ This project was developed through four major phases to achieve production readi
 - **Intelligent Document Processing**: Advanced PDF and text processing with semantic chunking
 - **Context-Aware Chat**: File-specific conversations with document context injection
 - **Semantic Search**: Vector-based similarity search using Google Generative AI embeddings
-- **Persistent Sessions**: Scalable session management with Supabase storage
+- **Persistent Sessions**: Scalable session management with Redis and optional Supabase storage
 - **Admin Dashboard**: Session monitoring, cleanup, and management endpoints
 
 ### **Production Features**
@@ -69,6 +80,8 @@ This project was developed through four major phases to achieve production readi
 └─────────────────┴─────────────────┴─────────────────┘
 ```
 
+Presentation layer is reflected in the Reflex UI, endpoints can be checked through /docs endpoint.
+
 ### **Service Dependencies**
 
 ```text
@@ -84,15 +97,16 @@ IngestionService (orchestrator)
 └── MetadataService (tracking)
 
 SessionStorageService
-└── SupabaseService (persistent storage)
+├── SupabaseService (optional persistent storage)
+└── Redis (caching and session storage)
 ```
 
 ### **Technology Stack**
 
 - **Backend**: FastAPI with async/await support
 - **AI/ML**: Google Generative AI (Gemini) for embeddings and chat
-- **Vector DB**: ChromaDB for semantic search and document storage
-- **Session Storage**: Supabase PostgreSQL for persistent session state
+- **Vector DB**: ChromaDB for semantic search and document storage (embedded)
+- **Session Storage**: Redis for caching with optional Supabase PostgreSQL for persistence
 - **File Processing**: PyPDF2, python-docx for document parsing
 - **Validation**: Pydantic for request/response validation
 - **DI Container**: Custom dependency injection system
@@ -101,51 +115,81 @@ SessionStorageService
 
 ```text
 vino-project/
-├── src/app/                           # Main application code
+├── .github/                          # GitHub Actions workflows
+│   └── workflows/
+│       └── ci.yml                   # CI/CD pipeline configuration
+├── src/app/                         # FastAPI backend application
 │   ├── core/
-│   │   └── config.py                  # Centralized configuration management
-│   ├── dependencies.py               # Dependency injection providers
-│   ├── main.py                       # FastAPI application with DI & routers
-│   ├── endpoints/                    # API route handlers
-│   │   ├── chat.py                   # Chat router with context support
-│   │   ├── file_handler.py           # File upload/management endpoints
-│   │   └── health.py                 # Health check endpoints
-│   ├── services/                     # Business logic layer
-│   │   ├── chat_service.py           # Context-aware chat with sessions
+│   │   ├── config.py                # Centralized configuration management
+│   │   └── exceptions.py            # Custom exception classes
+│   ├── dependencies.py             # Dependency injection providers
+│   ├── main.py                     # FastAPI application with DI & routers
+│   ├── endpoints/                  # API route handlers
+│   │   ├── chat.py                 # Chat router with context support
+│   │   ├── file_handler.py         # File upload/management endpoints
+│   │   └── health.py               # Health check endpoints
+│   ├── services/                   # Business logic layer
+│   │   ├── chat_service.py         # Context-aware chat with sessions
+│   │   ├── chunking_service.py     # Document chunking logic
+│   │   ├── document_service.py     # Document parsing utilities
+│   │   ├── extraction_service.py   # Text extraction from files
+│   │   ├── file_system_service.py  # File operations & storage
+│   │   ├── ingestion_pipeline_service.py # Document processing pipeline
 │   │   ├── session_storage_service.py # Persistent session management
-│   │   ├── vector_db_service.py      # ChromaDB operations
-│   │   ├── ingestion_service.py      # Document processing pipeline
-│   │   ├── file_system_service.py    # File operations & storage
-│   │   ├── document_service.py       # Document parsing utilities
-│   │   └── supabase_service.py       # Supabase client service
+│   │   ├── supabase_service.py     # Supabase client service
+│   │   └── vector_db_service.py    # ChromaDB operations
 │   ├── schemas/
-│   │   └── models.py                 # Pydantic request/response models
-│   └── prompt_engineering/           # AI prompt management
-│       ├── builder.py                # Context-aware prompt building
-│       ├── templates.py              # Prompt templates
-│       └── matrix_definitions.py     # Universal matrix definitions
-├── tests/                            # Comprehensive test suite
-│   ├── test_phase1.py               # Foundation tests
-│   ├── test_phase2.py               # Service & pipeline tests
-│   ├── test_phase3.py               # Context & chat tests
-│   ├── test_phase4.py               # Session storage tests
-│   └── test_phase3_integration.py   # Integration tests
+│   │   └── models.py               # Pydantic request/response models
+│   └── prompt_engineering/         # AI prompt management
+│       ├── builder.py              # Context-aware prompt building
+│       ├── templates.py            # Prompt templates
+│       └── matrix_definitions.py   # Universal matrix definitions
+├── reflex_ui/                      # Reflex frontend application
+│   ├── app/                        # Reflex app components
+│   │   ├── components/             # UI components
+│   │   │   ├── chat_interface.py   # Chat interface component
+│   │   │   ├── input_area.py       # Input area component
+│   │   │   ├── message_bubble.py   # Message bubble component
+│   │   │   ├── navbar.py           # Navigation bar
+│   │   │   └── typing_indicator.py # Typing indicator
+│   │   ├── states/                 # State management
+│   │   │   ├── chat_state.py       # Chat state logic
+│   │   │   └── state.py            # Global state
+│   │   └── app.py                  # Main Reflex app
+│   ├── assets/                     # Static assets (images, icons)
+│   ├── uploaded_files/             # User uploaded files storage
+│   ├── requirements.txt            # Reflex dependencies
+│   ├── rxconfig.py                 # Reflex configuration
+│   └── style.py                    # Styling definitions
+├── tests/                          # Comprehensive test suite (WIP)
+│   ├── test_app.py                 # Application tests
+│   ├── test_phase3.py              # Context & chat tests
+│   ├── test_phase4.py              # Session storage tests
+│   └── test_phase3_integration.py  # Integration tests
 ├── database/
-│   └── migrations/                  # Database migration scripts
-│       └── 001_create_chat_sessions.sql
-├── data/
-│   ├── framework_docs/              # Pre-loaded documentation
-│   └── user_uploads/                # User-uploaded documents
-├── chromadb/                        # Local ChromaDB storage
+│   └── migrations/                 # Database migration scripts
+│       └── 001_create_chat_sessions.py
+├── data/                           # Application data
+│   ├── chroma/                     # ChromaDB storage
+│   ├── framework_docs/             # Pre-loaded documentation
+│   └── user_uploads/               # User-uploaded documents
 ├── docs/                           # Project documentation
-│   ├── phase3_implementation.md     # Phase 3 details
 │   ├── architecture/               # System design documents
 │   ├── learning/                   # Research and iterations
-│   └── process/                    # Development process docs
-├── docker-compose.yml              # Docker services configuration
-├── Dockerfile                      # Application container
-├── requirements.txt                # Python dependencies
-└── pyproject.toml                  # Project configuration
+│   ├── process/                    # Development process docs
+│   ├── ci-cd-architecture.md       # CI/CD documentation
+│   ├── error-handling-architecture.md # Error handling guide
+│   └── phase3_implementation.md    # Phase 3 implementation details
+├── documents/                      # Sample documents for testing
+├── docker-compose.yml              # Main Docker services configuration
+├── docker-compose.ci.yml           # CI-specific Docker configuration
+├── Dockerfile.fastapi              # FastAPI service container
+├── Dockerfile.reflex               # Reflex service container
+├── pyproject.toml                  # Project configuration & dependencies
+├── requirements.txt                # Auto-generated by uv (for compatibility)
+├── rxconfig.py                     # Global Reflex configuration
+├── uv.lock                         # UV package lock file
+└── test_phase3_integration.py      # Integration test runner
 ```
 
 ## Quick Start
@@ -168,18 +212,18 @@ vino-project/
 
 2. **Install uv**
 
-https://docs.astral.sh/uv/getting-started/installation/#homebrew
+[uv Installation Methods](https://docs.astral.sh/uv/getting-started/installation/#installation-methods)
 
 Follow the installation steps depending on your OS.
 Make sure the ENVIRONMENT VARIABLES are set up correctly for terminal/CLI use.
 
-4. **Install dependencies**
+1. **Install dependencies**
 
    ```bash
    uv sync --all-extras
    ```
 
-5. **Set up environment variables**
+2. **Set up environment variables**
 
    Create a `.env` file in the project root:
 
@@ -200,7 +244,7 @@ Make sure the ENVIRONMENT VARIABLES are set up correctly for terminal/CLI use.
    CHUNKING_DEBUG=false
    ```
 
-6. **Set up Supabase Database (OPTIONAL)**
+3. **Set up Supabase Database (OPTIONAL)**
 
    Run the session storage migration in your Supabase SQL editor:
 
@@ -251,9 +295,11 @@ See the [🐳 Docker Deployment](#-docker-deployment) section above for complete
 ### **Chat & Conversation**
 
 #### `POST /v1/chat`
+
 Context-aware chat with optional file-specific conversations.
 
 **Request Body:**
+
 ```json
 {
   "message": "What are the key principles in this document?",
@@ -264,6 +310,7 @@ Context-aware chat with optional file-specific conversations.
 ```
 
 **Response:**
+
 ```json
 {
   "response": "Based on the document context...",
@@ -276,13 +323,16 @@ Context-aware chat with optional file-specific conversations.
 ### **Document Management**
 
 #### `POST /v1/upload`
+
 Upload and process documents for semantic search.
 
 **Request:**
+
 - Multipart form with `file` field
 - Optional `collection` parameter
 
 **Response:**
+
 ```json
 {
   "message": "File uploaded successfully",
@@ -292,12 +342,15 @@ Upload and process documents for semantic search.
 ```
 
 #### `GET /v1/files`
+
 List uploaded files and collections.
 
 #### `POST /v1/query`
+
 Semantic search across document collections.
 
 **Request Body:**
+
 ```json
 {
   "query": "machine learning concepts",
@@ -309,15 +362,19 @@ Semantic search across document collections.
 ### **Admin & Session Management**
 
 #### `GET /v1/admin/session/{session_id}`
+
 Get session information and metadata.
 
 #### `DELETE /v1/admin/session/{session_id}`
+
 Delete a specific chat session.
 
 #### `POST /v1/admin/cleanup_sessions`
+
 Clean up sessions older than specified days.
 
 **Request Body:**
+
 ```json
 {
   "days": 30
@@ -325,11 +382,12 @@ Clean up sessions older than specified days.
 ```
 
 #### `POST /v1/admin/process_directories`
+
 Process all documents in configured directories.
 
 ### **Health & Status**
 
-#### `GET /health/chromadb`
+
 Check ChromaDB connection status.
 
 ## 📋 Detailed Phase Documentation
@@ -337,12 +395,15 @@ Check ChromaDB connection status.
 ### **Phase 1: Foundation & Configuration Management**
 
 **Objectives:**
+
 - Establish clean architecture with separation of concerns
 - Implement centralized configuration management
 - Set up dependency injection for testability and maintainability
 
 **Key Changes:**
+
 1. **Centralized Configuration (`src/app/core/config.py`)**
+
    ```python
    class Settings:
        def __init__(self):
@@ -353,6 +414,7 @@ Check ChromaDB connection status.
    ```
 
 2. **Dependency Injection (`src/app/dependencies.py`)**
+
    ```python
    def get_chat_service() -> ChatService:
        return ChatService(
@@ -367,6 +429,7 @@ Check ChromaDB connection status.
    - Clean interfaces between services
 
 **Benefits:**
+
 -  Testable services with dependency injection
 -  Single source of truth for configuration
 -  Easy environment-specific configuration
@@ -375,12 +438,15 @@ Check ChromaDB connection status.
 ### **Phase 2: Service Purification & Ingestion Pipeline**
 
 **Objectives:**
+
 - Create pure, single-responsibility services
 - Implement document ingestion pipeline
 - Separate file operations from business logic
 
 **Key Changes:**
+
 1. **Service Purification**
+
    - `VectorDBService`: Only handles vector database operations
    - `SupabaseService`: Pure client for Supabase operations
    - `FileSystemService`: Handles all file operations and storage
@@ -403,6 +469,7 @@ Check ChromaDB connection status.
    - Graceful degradation for external service failures
 
 **Benefits:**
+
 - Clear separation of concerns
 -  Reusable, composable services
 -  Robust error handling (WIP)
@@ -411,12 +478,15 @@ Check ChromaDB connection status.
 ### **Phase 3: Document Context in Chat**
 
 **Objectives:**
+
 - Enable file-specific conversations
 - Implement context-aware prompt engineering
 - Organize endpoints with FastAPI routers
 
 **Key Changes:**
+
 1. **Context-Aware Chat (`src/app/services/chat_service.py`)**
+
    ```python
    def chat(self, message: str, session_id: str, uploaded_file_context_name: str = None):
        if uploaded_file_context_name:
@@ -435,6 +505,7 @@ Check ChromaDB connection status.
    - Dynamic prompt building based on conversation state
 
 3. **Router Organization (`src/app/endpoints/chat.py`)**
+
    ```python
    @router.post("/v1/chat", response_model=ChatResponse)
    async def chat_endpoint(
@@ -449,7 +520,8 @@ Check ChromaDB connection status.
    ```
 
 **Benefits:**
--  File-specific conversations with document context
+
+- File-specific conversations with document context
 - Intelligent prompt engineering
 - Clean API organization
 - Enhanced user experience with contextual responses
@@ -457,11 +529,13 @@ Check ChromaDB connection status.
 ### **Phase 4: Production Session Management**
 
 **Objectives:**
+
 - Move session state out of memory for scalability
 - Enable horizontal scaling with stateless design
 - Implement persistent session storage with Supabase
 
 **Key Changes:**
+
 1. **Persistent Session Storage (`src/app/services/session_storage_service.py`)**
    ```python
    class SessionStorageService:
@@ -474,6 +548,7 @@ Check ChromaDB connection status.
    ```
 
 2. **Stateless ChatService**
+
    ```python
    class ChatService:
        def _get_session_data(self, session_id: str):
@@ -488,6 +563,7 @@ Check ChromaDB connection status.
    ```
 
 3. **Database Schema (Supabase)**
+
    ```sql
    CREATE TABLE chat_sessions (
        id SERIAL PRIMARY KEY,
@@ -506,6 +582,8 @@ Check ChromaDB connection status.
    - Automatic cleanup of old sessions
 
 **Benefits:**
+
+
 - **Horizontal Scalability**: Multiple app instances share session data (WIP)
 - **Persistence**: Sessions survive server restarts
 - **Reliability**: Graceful fallback to memory storage (WIP)
@@ -621,13 +699,14 @@ curl -X POST "http://localhost:8000/v1/chat" \
    - Set up proper logging levels and monitoring
 
 2. **Database Setup**
-   - Use managed Supabase instance for session storage
-   - Set up proper database indexing for performance
+   - Redis is required for session storage and caching
+   - Optionally use managed Supabase instance for persistent session storage
+   - Set up proper database indexing for performance (if using Supabase)
    - Configure backup and recovery procedures
 
 3. **Scaling Considerations**
    - The application is stateless and supports horizontal scaling
-   - Session state is persisted in Supabase
+   - Session state is cached in Redis and optionally persisted in Supabase
    - Consider using a load balancer for multiple instances
 
 4. **Security**
@@ -638,41 +717,57 @@ curl -X POST "http://localhost:8000/v1/chat" \
 ### **Docker Deployment**
 
 ```bash
-# Full stack with Docker Compose
-docker-compose up -d
+# Full stack with Docker Compose (all services)
+docker-compose --profile all up -d
 
 # Or run services separately
-docker-compose up -d chromadb
-docker-compose up -d supabase  # if using local Supabase
+docker-compose up -d redis        # Session storage
+docker-compose up -d fastapi      # Backend API with embedded ChromaDB
+docker-compose up -d frontend     # Reflex UI frontend
 ```
 
-### **Production Dockerfile**
+### **Production Docker Build**
+
+The project uses multi-stage Docker builds with dependency separation:
 
 ```dockerfile
+# FastAPI Backend (Dockerfile.fastapi)
 FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install uv for faster dependency management
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
+# Copy dependency files
+COPY pyproject.toml uv.lock ./
+
+# Install FastAPI dependencies only
+RUN uv sync --frozen --no-dev --group fastapi
+
+# Copy application code
 COPY src/ src/
 COPY .env .
 
 EXPOSE 8000
 
-CMD ["uvicorn", "src.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "--group", "fastapi", "uvicorn", "src.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
 ## 🐳 Docker Deployment
 
-This project uses Docker Compose for easy deployment with separate services for FastAPI backend, Reflex frontend, ChromaDB, and Redis.
+This project uses Docker Compose for easy deployment with separate services:
 
-### Quick Start
+
+- **FastAPI Backend**: API server with embedded ChromaDB for vector storage
+- **Reflex Frontend**: Interactive chat UI
+- **Redis**: Session storage and caching
+
+### Quick Start with Docker
 
 ```bash
 # Build and start all services
-docker-compose up -d --build
+docker-compose --profile all up -d --build
 
 # View running services
 docker-compose ps
@@ -707,10 +802,10 @@ docker-compose --profile prod up -d --build
 ### Individual Services
 
 ```bash
-# Start only ChromaDB and Redis (for local development)
-docker-compose up -d chromadb redis
+# Start only Redis (for session storage)
+docker-compose up -d redis
 
-# Start only backend services
+# Start backend with embedded ChromaDB
 docker-compose up -d fastapi
 
 # Start only frontend
@@ -721,11 +816,12 @@ docker-compose up -d frontend
 
 Once running, access the application at:
 
-- **Reflex UI Frontend**: http://localhost:3000
-- **FastAPI Backend**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs
-- **ChromaDB**: http://localhost:8001
+- **Reflex UI Frontend**: <http://localhost:3000>
+- **FastAPI Backend**: <http://localhost:8000>
+- **API Documentation**: <http://localhost:8000/docs>
 - **Redis**: localhost:6379
+
+*Note: ChromaDB is embedded within the FastAPI service and not directly accessible*
 
 ## 🧪 Testing
 
@@ -748,7 +844,7 @@ python -m pytest tests/test_phase3_integration.py -v
 python -m pytest --cov=src tests/
 ```
 
-### **Test Coverage WIP** 
+### **Test Coverage WIP**
 
 The test suite covers:
 
@@ -764,27 +860,31 @@ The test suite covers:
 ### **Common Issues**
 
 1. **Session Storage Connection**
-   ```
+
+   ```bash
    Error: Cannot connect to Supabase
    Solution: Check SUPABASE_URL and SUPABASE_ANON_KEY in .env
-   Fallback: Application will use memory storage automatically
+   Fallback: Application will use Redis and memory storage automatically
    ```
 
-2. **ChromaDB Connection**
-   ```
+2. **ChromaDB Issues**
+
+   ```txt
    Error: ChromaDB connection failed
-   Solution: Check ChromaDB server status or USE_CHROMA_SERVER setting
-   Commands: docker-compose up -d chromadb
+   Solution: Check Docker logs for FastAPI service (ChromaDB is embedded)
+   Commands: docker-compose logs fastapi
    ```
 
 3. **Google AI API Issues**
-   ```
+
+   ```txt
    Error: Invalid API key or quota exceeded
    Solution: Verify GOOGLE_API_KEY and check quota limits
    ```
 
 4. **File Upload Problems**
-   ```
+
+   ```txt
    Error: File processing failed
    Solution: Check file permissions and supported formats
    Supported: PDF, TXT, DOCX
