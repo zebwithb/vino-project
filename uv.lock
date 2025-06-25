@@ -2734,7 +2734,7 @@ dependencies = [
     { name = "python-dotenv" },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "chromadb" },
     { name = "fastapi" },
@@ -2769,11 +2769,6 @@ fastapi = [
 ]
 reflex = [
     { name = "reflex" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pyinstaller" },
 ]
 
 [package.metadata]
@@ -2811,7 +2806,39 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pyinstaller", specifier = ">=6.14.1" }]
+dev = [
+    { name = "chromadb", specifier = ">=1.0.12" },
+    { name = "fastapi", specifier = ">=0.115.9" },
+    { name = "google-generativeai", specifier = ">=0.8.5" },
+    { name = "langchain-google-genai", specifier = ">=2.0.10" },
+    { name = "pydantic", specifier = ">=2.11.3" },
+    { name = "pyinstaller", specifier = ">=6.0.0" },
+    { name = "pypandoc", specifier = ">=1.15" },
+    { name = "pypdf2", specifier = ">=3.0.1" },
+    { name = "pytest", specifier = ">=8.4.0" },
+    { name = "ruff", specifier = ">=0.11.12" },
+    { name = "supabase", specifier = ">=2.15.3" },
+    { name = "tiktoken", specifier = ">=0.9.0" },
+]
+fastapi = [
+    { name = "chromadb", specifier = ">=1.0.4" },
+    { name = "fastapi", extras = ["standard"], specifier = ">=0.115.9" },
+    { name = "google-generativeai", specifier = ">=0.8.4" },
+    { name = "langchain", specifier = ">=0.3.23" },
+    { name = "langchain-core", specifier = ">=0.3.51" },
+    { name = "langchain-google-genai", specifier = ">=2.0.10" },
+    { name = "langchain-text-splitters", specifier = ">=0.3.8" },
+    { name = "pydantic", specifier = ">=2.11.3" },
+    { name = "pypandoc", specifier = ">=1.15" },
+    { name = "pypdf", specifier = ">=5.4.0" },
+    { name = "pypdf2", specifier = ">=3.0.1" },
+    { name = "python-multipart", specifier = ">=0.0.20" },
+    { name = "redis" },
+    { name = "supabase", specifier = ">=2.15.3" },
+    { name = "tiktoken", specifier = ">=0.9.0" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.34.2" },
+]
+reflex = [{ name = "reflex", specifier = ">=0.7.6" }]
 
 [[package]]
 name = "watchfiles"
