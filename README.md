@@ -954,4 +954,23 @@ For questions, issues, or contributions:
 
 ---
 
+# Uploading Documents for Context
+
+For Supabase table and storage setup instructions, see [Supabase Setup Guide](file_upload/supabase-setup.md). Supabase is used for persistent session storage and document metadata management and must be configured before uploading documents.
+
+To add new documents to the Knowledge Bank:
+
+1. Place your `.md`, `.txt`, `.pdf`, or `.docx` file in the `data/kb_new/` directory.
+2. Run the following command from the project root:
+
+   ```bash
+   uv run python -m file_upload.file_processor --default
+   ```
+3. The script will process and upload documents to both ChromaDB and Supabase, then move processed files to `data/kb/`.
+4. Check the terminal output for upload status and errors.
+
+For detailed requirements, document structure, and troubleshooting, see [Document Upload Guide](docs/upload-docs.md).
+
+
+
 **Built with passion using FastAPI, ChromaDB, Google Generative AI, and Supabase**
