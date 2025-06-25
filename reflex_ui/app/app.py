@@ -30,14 +30,20 @@ def vino_chat_page() -> rx.Component:
     """
     A page that displays the chat interface.
     """
-    return rx.vstack(
-        navbar(), # Navigation bar component
-        message_display_area(),  # Your component to display messages
-        input_area(),            # The input area from your chat_interface.py
-        spacing="0",
-        align_items="stretch",
-        width="100%",
-        height="100vh", # Make the chat interface take full viewport height
+    return rx.box(
+        rx.vstack(
+            navbar(), # Navigation bar component
+            message_display_area(),  # Your component to display messages
+            input_area(),            # The input area from your chat_interface.py
+            spacing="0",
+            align_items="stretch",
+            width="100%",
+            height="100vh", 
+            bg="white"
+        ),
+        width="50%",
+        height="100vh",
+        margin="0 auto",
         bg="white"
     )
     
