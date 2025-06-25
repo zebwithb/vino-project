@@ -45,4 +45,5 @@ dev = [
     "pypdf2>=3.0.1",
     "langchain-google-genai>=2.0.10",
     "pydantic>=2.11.3",
+    "reflex>=0.7.14",
 ]
