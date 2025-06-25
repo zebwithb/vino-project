@@ -109,14 +109,23 @@ def navbar_link(
             **link_styles,
             on_click=State.set_current_step(step_number),
             padding_x="0",
-            border_left=left_border,
+            border_left=rx.cond(
+                State.current_step == step_number,
+                "none",  # Remove left border when step is active
+                left_border
+            ),
             border_right=rx.cond(
                 State.current_step == step_number,
                 "none",  # Active step has no right border to allow seamless appearance
                 rx.cond(
-                    step_number < NAVBAR_CONFIG["step_count"],
-                    separator_border,  # Add separator for inactive steps
-                    right_border  # Right border only for last step
+                    # Also remove right border if the next step is active (to prevent left border appearance on active step)
+                    State.current_step == step_number + 1,
+                    "none",
+                    rx.cond(
+                        step_number < NAVBAR_CONFIG["step_count"],
+                        separator_border,  # Add separator for inactive steps
+                        right_border  # Right border only for last step
+                    )
                 )
             ),
             # Active state gets elevated appearance
