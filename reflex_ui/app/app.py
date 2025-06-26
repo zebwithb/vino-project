@@ -40,14 +40,15 @@ def message_display_area() -> rx.Component:
             },
         },
         # Add an effect that triggers when message count changes
-        on_mount=ChatState.scroll_to_bottom,
+        # on_mount=ChatState.scroll_to_bottom,
         # Use a key that changes when messages change to trigger re-render and scroll
-        key=ChatState.message_count,
+        # key=ChatState.message_count,
         # Add client-side script for auto-scrolling
         custom_attrs={
             "data-message-count": ChatState.message_count,
         },
     )
+
 
 def vino_chat_page() -> rx.Component:
     """
@@ -82,7 +83,7 @@ def vino_chat_page() -> rx.Component:
         width="100%",
         bg="white",
         overflow="hidden",
-        on_mount=ChatState.scroll_to_bottom,
+        # on_mount=ChatState.scroll_to_bottom,
     )
     
 app = rx.App(
