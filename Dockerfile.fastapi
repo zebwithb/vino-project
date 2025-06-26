@@ -16,11 +16,12 @@ ENV PATH="/root/.local/bin/:$PATH"
 WORKDIR /app
 
 # Copy FastAPI source code
-COPY src/ pyproject.toml uv.lock ./
+COPY src/ ./src/
+COPY pyproject.toml uv.lock ./
 
 # Install Python dependencies
 ENV UV_PROJECT_ENVIRONMENT=/usr/local
-RUN uv sync --locked --extra fastapi
+RUN uv sync --locked
 
 # Expose FastAPI port
 EXPOSE 8000
@@ -30,5 +31,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 ENV PATH="/root/.cargo/bin:$PATH"
-# Run FastAPI
-CMD ["fastapi","run", "./app/main.py", "--port", "8000"]
+# Run FastAPI with uvicorn
+CMD ["uv", "run", "fastapi", "app/src/main.py", "--proxy-headers", "--port", "8000"]

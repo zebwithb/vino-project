@@ -7,12 +7,13 @@ def input_area() -> rx.Component:
         rx.el.form(
             rx.el.div(
                 rx.el.textarea(
-                    default_value=ChatState.input_message,
+                    id="message-input",
+                    value=ChatState.input_message,
                     placeholder="Type your message...",
                     on_change=ChatState.set_input_message,
-                    on_key_down=lambda key, shift: rx.cond(
-                        (key == "Enter") & ~shift,
-                        ChatState.send_message_from_input,
+                    on_key_down=lambda key: rx.cond(
+                        key == "Enter",
+                        ChatState.handle_send_message,
                         rx.noop()
                     ),
                     class_name="flex-grow p-3 bg-white border border-slate-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-sky-400 min-h-[48px] max-h-40 text-slate-800 placeholder-slate-400",
@@ -37,12 +38,12 @@ def input_area() -> rx.Component:
                 ),
                 class_name="flex items-end gap-2",
             ),
-            on_submit=ChatState.send_message_from_input,
+            on_submit=ChatState.handle_send_message,
             reset_on_submit=False,
             class_name="w-full",
         ),
         rx.cond(
-            ChatState.messages.length() > 0,
+            ChatState.message_count > 0,
             rx.el.button(
                 rx.icon(
                     "trash-2", size=16, class_name="mr-1.5"

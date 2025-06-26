@@ -12,6 +12,7 @@ from app.core.exceptions import (
 )
 from app.prompt_engineering.builder import get_universal_matrix_prompt
 from app.services.vector_db_service import VectorDBService
+from app.schemas.models import LLMResponse
 
 # Forward declaration to avoid circular imports
 from typing import TYPE_CHECKING
@@ -28,8 +29,7 @@ class ChatService:
                 model=settings.LLM_MODEL_NAME,
                 api_key=settings.GOOGLE_API_KEY,
                 temperature=settings.LLM_TEMPERATURE,
-                max_retries=settings.LLM_MAX_RETRIES,
-                convert_system_message_to_human=True # Gemini API prefers this for system messages
+                max_retries=settings.LLM_MAX_RETRIES
             )
         except Exception as e:
             logger.critical(f"Failed to initialize ChatGoogleGenerativeAI. Check API key and configuration. Error: {e}", exc_info=True)
@@ -44,15 +44,28 @@ class ChatService:
         self.planner_details: Dict[str, Optional[str]] = {}
 
     def _get_session_data(self, session_id: str) -> Tuple[List[BaseMessage], int, Optional[str]]:
-        """Get session data from persistent storage or fallback to memory."""
+        """Get session data, prioritizing in-memory cache if it exists due to a previous failure."""
+        # If a session has previously fallen back to in-memory, it's the most current state.
+        if session_id in self.conversation_history:
+            logger.warning(f"Session '{session_id}' is using in-memory cache.")
+            return (
+                self.conversation_history[session_id],
+                self.current_process_step[session_id],
+                self.planner_details[session_id]
+            )
+
         if self.session_storage_service:
-            # Use persistent storage
+            # If not in memory, try persistent storage.
             try:
                 return self.session_storage_service.get_session_data(session_id)
             except Exception as e:
-                logger.error(f"Error loading session '{session_id}' from persistent storage, falling back to memory: {e}", exc_info=True)
+                logger.error(f"Error loading session '{session_id}' from persistent storage, falling back to memory for this request: {e}", exc_info=True)
+                # Fall through to the generic in-memory creation logic below for this request.
         
-        # Fallback to in-memory storage
+        # This block now handles two cases:
+        # 1. No persistent storage is configured.
+        # 2. Persistent storage failed to load the session.
+        # It creates a new in-memory session if one doesn't exist.
         if session_id not in self.conversation_history:
             logger.info(f"Creating new in-memory session for session_id: {session_id}")
             self.conversation_history[session_id] = []
@@ -65,20 +78,26 @@ class ChatService:
         )
 
     def _update_session_data(self, session_id: str, history: List[BaseMessage], step: int, planner: Optional[str]):
-        """Update session data in persistent storage and memory fallback."""
+        """Update session data in persistent storage, with a fallback to in-memory storage on failure."""
         if self.session_storage_service:
-            # Use persistent storage
             try:
                 success = self.session_storage_service.update_session_data(session_id, history, step, planner)
                 if success:
-                    return  # Successfully saved to persistent storage
+                    # Successfully saved to persistent storage.
+                    # If a fallback copy exists in memory, clear it to ensure the next read comes from the authoritative source.
+                    if session_id in self.conversation_history:
+                        logger.info(f"Session '{session_id}' successfully saved to persistent storage. Clearing in-memory fallback.")
+                        del self.conversation_history[session_id]
+                        del self.current_process_step[session_id]
+                        del self.planner_details[session_id]
+                    return
                 else:
-                    logger.warning(f"Failed to save session '{session_id}' to persistent storage, falling back to memory")
-            # session storager failures shouldn't break the chat -> fall back to memory
+                    logger.warning(f"Failed to save session '{session_id}' to persistent storage. Falling back to in-memory cache.")
             except Exception as e:
-                logger.error(f"Error saving session '{session_id}' to persistent storage, falling back to memory: {e}", exc_info=True)
+                logger.error(f"Error saving session '{session_id}' to persistent storage. Falling back to in-memory cache: {e}", exc_info=True)
         
-        # Fallback to in-memory storage
+        # Fallback to in-memory storage if persistent storage is not configured or fails.
+        logger.info(f"Saving session '{session_id}' to in-memory cache.")
         self.conversation_history[session_id] = history
         self.current_process_step[session_id] = step
         self.planner_details[session_id] = planner
@@ -162,20 +181,14 @@ class ChatService:
         session_id: str, 
         query_text: str, 
         api_history_data: List[Dict[str, Any]], 
-        current_step_override: Optional[int] = None,
         selected_alignment: Optional[str] = None,
         explain_active: Optional[bool] = False,
         tasks_active: Optional[bool] = False,
         uploaded_file_context_name: Optional[str] = None
     ) -> Tuple[str, List[Dict[str, Any]], int, Optional[str]]:
         history, current_step, planner = self._get_session_data(session_id)
-
-        if current_step_override is not None and 1 <= current_step_override <= 6:
-            current_step = current_step_override
-            if current_step_override == 1:  # Reset history if jumping back to step 1
-                history = []
-                planner = None
         
+        logger.info(f"Session {session_id} - Using stored step: {current_step}")
         # Handle uploaded file context
         file_context = ""
         if uploaded_file_context_name:
@@ -243,14 +256,15 @@ class ChatService:
         # The api_history_data might be what the client *thinks* the history is.
         # For simplicity now, we'll trust the client's history if provided, otherwise use server's.
         # A robust solution would reconcile or always use server-side history.
+        prompt_history = history
         if api_history_data:
-             history = self._convert_api_history_to_langchain(api_history_data)
+             prompt_history = self._convert_api_history_to_langchain(api_history_data)
         
         # Get prompt from prompt_engineering
         # Note: `get_universal_matrix_prompt` expects `history` to be passed to `invoke` later
         # So we pass an empty list or the actual history to the builder if it uses it directly.
         # The current builder seems to use a MessagesPlaceholder.
-        prompt_template = get_universal_matrix_prompt(
+        prompt_template, parser = get_universal_matrix_prompt(
             current_step=current_step,
             history=[], # Placeholder, actual history passed in invoke
             question=query_text,
@@ -259,48 +273,45 @@ class ChatService:
             planner_state=planner
         )
 
-        if not prompt_template:
-            logger.error(f"Could not generate prompt for step {current_step}")
+        if not prompt_template or not parser:
+            logger.error(f"Could not generate prompt or parser for step {current_step}")
             raise PromptGenerationError()
 
         try:
             # Construct the chain for this call
-            # The `history` variable here is the list of Langchain BaseMessage objects
-            chain = prompt_template | self.llm
+            chain = prompt_template | self.llm | parser
             
             # Invoke the chain
-            # The `history` argument for `invoke` maps to the `MessagesPlaceholder(variable_name="history")`
-            response_message = chain.invoke({
-                "history": history, # Pass the actual conversation history here
-                "question": query_text, # Already in human message of template
-                # other variables expected by your specific prompt template structure
-                # "step_context": "", # if used by template
-                # "general_context": combined_context.strip(), # if used by template
-                # "planner_state": planner, # if used by template
-                # "current_step": current_step # if used by template
+            llm_response: LLMResponse = chain.invoke({
+                "history": history,
+                "question": query_text,
             })
-            ai_response_content = response_message.content
+
+            ai_response_content = llm_response.response_text
+            next_step_from_llm = llm_response.next_step
+
+            # Update step based on LLM output
+            if next_step_from_llm is not None and 1 <= next_step_from_llm <= 6:
+                if next_step_from_llm != current_step:
+                    logger.info(f"Session {session_id} - LLM advised moving from step {current_step} to {next_step_from_llm}.")
+                    current_step = next_step_from_llm
+                else:
+                    logger.info(f"Session {session_id} - LLM advised staying on step {current_step}.")
+            else:
+                logger.info(f"Session {session_id} - LLM did not advise a step change. Staying on step {current_step}.")
 
             # Update history
             history.append(HumanMessage(content=query_text))
             history.append(AIMessage(content=ai_response_content))
 
-            # Basic logic to advance step or update planner (can be made more sophisticated)
-            # This is a placeholder; VINO's logic for step transition and planner updates
-            # would be more complex, potentially based on LLM output.
-            if f"Proceed to Step {current_step + 1}" in ai_response_content and current_step < 6:
-                current_step += 1
-
-            if current_step == 3 and "PLANNER DEFINED:" in ai_response_content: # Example trigger
-                # Extract planner (this is a simplistic example)
-                try:
-                    if isinstance(ai_response_content, str):
-                        planner = ai_response_content.split("PLANNER DEFINED:")[1].strip()
-                except IndexError:
-                    pass # Planner not found or format incorrect
-            
+            # Save the updated state
             self._update_session_data(session_id, history, current_step, planner)
-            return str(ai_response_content), self._convert_langchain_history_to_api(history), current_step, planner
+            
+            logger.info(f"Session {session_id} - Response generated, returning step: {current_step}")
+            
+            # Ensure we return a string
+            final_content = str(ai_response_content)
+            return final_content, self._convert_langchain_history_to_api(history), current_step, planner
         
         except Exception as e:
             logger.error(f"Error during LLM chain invocation for session '{session_id}': {e}", exc_info=True)

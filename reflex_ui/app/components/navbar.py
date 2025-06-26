@@ -1,5 +1,5 @@
 import reflex as rx
-from app.states.state import State
+from app.states.chat_state import ChatState
 from typing import Optional
 
 # Configuration constants
@@ -98,7 +98,7 @@ def navbar_link(
         
         return rx.link(
             rx.cond(
-                State.current_step == step_number,
+                ChatState.current_step_display == step_number,
                 # Active state
                 rx.box(
                     active_svg_image,
@@ -107,8 +107,8 @@ def navbar_link(
                     padding="1vh",
                     box_shadow="0 2px 8px rgba(0, 0, 0, 0.1)",
                     border="1px solid #7a7a7a",
-                    width="120%",
-                    height="10vh",
+                    width="100%",
+                    height="7vh",
                     display="flex",
                     align_items="center",
                     justify_content="center",
@@ -117,18 +117,19 @@ def navbar_link(
                 inactive_svg_image,
             ),
             **link_styles,
-            on_click=State.set_current_step(step_number),
+            # Commented out to prevent conflicts with backend step progression logic
+            # on_click=State.set_current_step(step_number),
             padding_x="0",
             border_left=rx.cond(
-                State.current_step == step_number,
+                ChatState.current_step_display == step_number,
                 "none",
                 left_border
             ),
             border_right=rx.cond(
-                State.current_step == step_number,
+                ChatState.current_step_display == step_number,
                 "none",
                 rx.cond(
-                    State.current_step == step_number + 1,
+                    ChatState.current_step_display == step_number + 1,
                     "none",
                     rx.cond(
                         step_number < NAVBAR_CONFIG["step_count"],
@@ -137,7 +138,7 @@ def navbar_link(
                     )
                 )
             ),
-            z_index=rx.cond(State.current_step == step_number, "10", "1"),
+            z_index=rx.cond(ChatState.current_step_display == step_number, "10", "1"),
         )
     elif default_image_src:
         image_props = get_common_image_props(
@@ -174,40 +175,33 @@ def navbar() -> rx.Component:
     """Renders the navigation bar with step indicators."""
     step_links = [create_step_link(i) for i in range(1, NAVBAR_CONFIG["step_count"] + 1)]
     
-    navbar_styles = {
-        "bg": NAVBAR_CONFIG["background_color"],
-        "padding": "0",
-        "position": "fixed",
-        "top": "3vh",
-        "z_index": "5",
-        "width": "100%",
-        "border_top": get_border_style(),
-        "border_bottom": get_border_style(),
-        "height": "6vh",
-    }
-    
-    content_styles = {
-        "width": "100%",
-        "align_items": "center",
-        "height": "6vh",
-        "padding": "0vh",
-        "justify_content": "center",
-    }
-    
-    step_container_styles = {
-        "justify": "between",
-        "spacing": "0",
-        "width": "70%",
-        "height": "100%",
-        "align_items": "stretch",
-    }
+    print(f"Navbar: Rendering navbar component")
     
     return rx.box(
         rx.desktop_only(
             rx.hstack(
-                rx.hstack(*step_links, **step_container_styles),
-                **content_styles,
+                rx.hstack(
+                    *step_links,
+                    justify="between",
+                    spacing="0",
+                    width="70%",
+                    height="100%",
+                    align="stretch",
+                ),
+                width="100%",
+                align="center",
+                height="6vh",
+                padding="0vh",
+                justify="center",
             ),
         ),
-        **navbar_styles,
+        bg="#f0f0f0",
+        padding="0",
+        position="fixed",
+        top="3vh",
+        z_index="5",
+        width="100%",
+        border_top=get_border_style(),
+        border_bottom=get_border_style(),
+        height="6vh",
     )

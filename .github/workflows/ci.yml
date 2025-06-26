@@ -3,26 +3,13 @@ name: VINO Project CI/CD
 on:
   push:
     branches: [ main, develop ]
-    # Skip CI for documentation-only changes
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - 'LICENSE'
-      - '.gitignore'
   pull_request:
     branches: [ main ]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - 'LICENSE'
-      - '.gitignore'
 
 jobs:
   # Lint and Test Job
   lint-and-test:
     runs-on: ubuntu-latest
-    # Skip CI if commit message contains [skip ci], [ci skip], or [no ci]
-    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[no ci]') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -33,14 +20,13 @@ jobs:
           python-version: '3.12'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
         run: |
-          uv sync --locked --all-extras --dev
+          uv sync --locked
           uv pip install pytest ruff python-dotenv
 
       - name: Create .env file for testing
@@ -65,8 +51,6 @@ jobs:
   docker-build:
     runs-on: ubuntu-latest
     needs: lint-and-test
-    # Skip CI if commit message contains [skip ci], [ci skip], or [no ci]
-    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[no ci]') }}
     strategy:
       matrix:
         service: [fastapi, reflex]
@@ -77,102 +61,55 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Define image tag
-        id: image_tag
-        run: echo "tag=vino-${{ matrix.service }}:${{ github.sha }}" >> $GITHUB_OUTPUT
-
       - name: Build ${{ matrix.service }} Docker image
         run: |
-          docker build -f Dockerfile.${{ matrix.service }} -t ${{ steps.image_tag.outputs.tag }} .
+          docker build -f Dockerfile.${{ matrix.service }} -t vino-${{ matrix.service }}:latest .
 
-      - name: Save Docker image to a file
-        run: docker save ${{ steps.image_tag.outputs.tag }} -o ${{ matrix.service }}.tar
-
-      - name: Upload Docker image artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.service }}-image
-          path: ${{ matrix.service }}.tar
+      - name: Test ${{ matrix.service }} Docker image
+        run: |
+          # Test that the image can be created and basic health check
+          docker run --rm -d --name test-${{ matrix.service }} vino-${{ matrix.service }}:latest
+          sleep 10
+          if [ "${{ matrix.service }}" = "fastapi" ]; then
+            docker exec test-${{ matrix.service }} curl -f http://localhost:8000/health || echo "Health check failed but continuing"
+          fi
+          docker stop test-${{ matrix.service }} || true
 
   # Integration Test with Docker Compose
   integration-test:
     runs-on: ubuntu-latest
     needs: docker-build
-    # Skip CI if commit message contains [skip ci], [ci skip], or [no ci]
-    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[no ci]') }}
-    environment: production
-    env:
-      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-      # Define image tags to be used by Docker Compose
-      FASTAPI_IMAGE_TAG: vino-fastapi:${{ github.sha }}
-      REFLEX_IMAGE_TAG: vino-reflex:${{ github.sha }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download FastAPI image artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: fastapi-image
-
-      - name: Download Reflex image artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: reflex-image
-
-      - name: Load Docker images
+      - name: Create .env file for integration
         run: |
-          docker load -i fastapi.tar
-          docker load -i reflex.tar
+          echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" > .env
+          echo "CHROMA_HOST=chromadb" >> .env
+          echo "CHROMA_PORT=8000" >> .env
+          echo "REDIS_HOST=redis" >> .env
+          echo "REDIS_PORT=6379" >> .env
 
-      - name: Start services using pre-built images
+      - name: Build and start services
         run: |
-          # The environment variables will tell docker-compose which images to use
-          docker compose -f docker-compose.ci.yml up -d
+          docker compose build
+          docker compose up -d
 
       - name: Wait for services to be ready
         run: |
-          # Wait for FastAPI with early failure detection
-          echo "Waiting for FastAPI to be ready..."
-          for i in {1..24}; do  # 24 * 5 = 120 seconds total
-            if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
-              echo "✅ FastAPI is ready!"
-              break
-            fi
-            
-            # Check for API key error in logs
-            if docker compose -f docker-compose.ci.yml logs fastapi 2>/dev/null | grep -q "API key not found"; then
-              echo "❌ FastAPI failed to start: API key not found"
-              echo "=== FastAPI Logs ==="
-              docker compose -f docker-compose.ci.yml logs fastapi
-              exit 1
-            fi
-            
-            echo "Waiting for FastAPI... (attempt $i/24)"
-            sleep 5
-          done
-          
-          # Final check
-          if ! curl -sf http://localhost:8000/health > /dev/null 2>&1; then
-            echo "❌ FastAPI failed to start after 120 seconds"
-            echo "=== FastAPI Logs ==="
-            docker compose -f docker-compose.ci.yml logs fastapi
-            exit 1
-          fi
-          
+          # Wait for ChromaDB
+          timeout 60 bash -c 'until curl -f http://localhost:8001/api/v1/heartbeat; do sleep 2; done'
+          # Wait for FastAPI
+          timeout 60 bash -c 'until curl -f http://localhost:8000/health; do sleep 2; done'
           # Wait for Redis
-          timeout 60 bash -c 'until nc -z localhost 6379; do echo "Waiting for Redis..."; sleep 2; done'
-          echo "✅ Redis is ready!"
+          timeout 60 bash -c 'until nc -z localhost 6379; do sleep 2; done'
 
       - name: Run integration tests
         run: |
           # Test FastAPI endpoints
           curl -f http://localhost:8000/health
-
-          # The following line is failing because the /v1/admin/files endpoint
-          # returns a 404 Not Found error. This test should be re-enabled
-          # once the endpoint is fully implemented in the FastAPI application.
-          # curl -f http://localhost:8000/v1/admin/files
+          curl -f http://localhost:8000/v1/admin/files
           
           # Test basic chat functionality
           curl -X POST http://localhost:8000/v1/chat \
@@ -188,14 +125,16 @@ jobs:
         if: failure()
         run: |
           echo "=== FastAPI Logs ==="
-          docker compose -f docker-compose.ci.yml logs fastapi
+          docker compose logs fastapi
+          echo "=== ChromaDB Logs ==="
+          docker compose logs chromadb
           echo "=== Redis Logs ==="
-          docker compose -f docker-compose.ci.yml logs redis
+          docker compose logs redis
           echo "=== Frontend Logs ==="
-          docker compose -f docker-compose.ci.yml logs frontend
+          docker compose logs frontend
 
       - name: Cleanup
         if: always()
         run: |
-          docker compose -f docker-compose.ci.yml down -v
+          docker compose down -v
           docker system prune -f

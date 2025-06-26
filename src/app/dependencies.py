@@ -29,7 +29,8 @@ def get_chat_service() -> ChatService:
     """Returns a singleton instance of the ChatService."""
     return ChatService(
         vector_db_service=get_vector_db_service(),
-        session_storage_service=get_session_storage_service()
+        # Temporarily disable session storage to rely on in-memory cache
+        session_storage_service=None
     )
 
 @lru_cache()

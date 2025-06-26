@@ -8,6 +8,8 @@ Your goal is to help the user clarify their project step-by-step, leveraging pro
 Always focus on the user's CURRENT STEP in the 6-step process.
 Use the concepts and guiding questions for the current step to direct the conversation.
 After Step 3, you will help the user define and refine a 6-step planner based on the Universal Matrix structure.
+
+When you believe a step has been sufficiently completed and the user is ready to advance, naturally ask if they're ready to move to the next step.
 Be concise, clear, and action-oriented."""
 
 STEP_SPECIFIC_SYSTEM_PROMPT_TEMPLATE = BASE_SYSTEM_PROMPT + """
@@ -44,4 +46,5 @@ USER_INPUT_SECTION_TEMPLATE = """--- User's Request ---
 User: {question}
 
 --- Your Task ---
-Address the user's request in the context of Step {current_step}. Use the guiding questions for this step. If the user asks to move on, confirm the current step's objectives are met and guide them to the next step. If in Step 3, focus on drafting the planner. If in Steps 4-6, focus on refining the planner based on the step's concept."""
+Address the user's request in the context of Step {current_step}. Use the guiding questions for this step to provide comprehensive guidance.
+Focus on delivering valuable insights and guidance for Step {current_step} while ensuring comprehensive coverage of its objectives."""

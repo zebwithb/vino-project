@@ -3,9 +3,7 @@ from app.states.chat_state import Message, ChatState
 from app.components.typing_indicator import typing_indicator
 
 
-def ai_message_display(
-    message_text: str, is_last_ai_message: bool
-) -> rx.Component:
+def ai_message_display(message_text: str, is_last_ai_message: bool) -> rx.Component:
     return rx.el.div(
         rx.cond(
             (message_text == "")
@@ -13,7 +11,7 @@ def ai_message_display(
             & ChatState.processing,
             typing_indicator(),
             rx.el.p(
-                message_text,
+                rx.markdown(message_text),
                 class_name="text-sm sm:text-base text-slate-800",
             ),
         ),

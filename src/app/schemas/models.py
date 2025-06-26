@@ -61,6 +61,12 @@ class ProcessingResult(BaseModel):
             chunk_count=0
         )
         
+# --- LLM Interaction Models ---
+
+class LLMResponse(BaseModel):
+    """Defines the structured output we expect from the LLM."""
+    response_text: str = Field(description="The conversational text to show to the user.")
+    next_step: Optional[int] = Field(None, description="The step number to advance to if the current step is complete. This should only be set when the current step's objectives are fully met.")
 
 
 # --- API Request/Response Models ---
@@ -83,8 +89,6 @@ class QueryResponse(BaseModel): # This is your primary ChatResponse
     """Response model for the main chat/query endpoint."""
     response: str
     current_step: int
-    # History is usually managed by the client (Reflex) and ChatService state,
-    # so not typically returned in each response unless specifically needed.
     # history: List[Dict[str, Any]] 
     planner_details: Optional[str] = None # Or Dict[str, Any] if structured
 

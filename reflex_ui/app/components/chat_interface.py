@@ -52,7 +52,7 @@ def input_area() -> rx.Component:
                 class_name="flex flex-col sm:flex-row items-center gap-3",
             ),
             rx.cond(
-                ChatState.messages.length() > 0,
+                ChatState.message_count > 0,
                 rx.el.button(
                     rx.icon(
                         "trash-2", size=14, class_name="mr-1"
@@ -67,12 +67,13 @@ def input_area() -> rx.Component:
         ),
         rx.el.form(              
             rx.el.div(                rx.el.textarea(
+                    id="message-input-chat",
                     value=ChatState.input_message,
                     placeholder="Ask Vino AI...",
                     on_change=ChatState.set_input_message,
                     on_key_down=lambda key: rx.cond(
                         key == "Enter",
-                        ChatState.on_enter,
+                        ChatState.handle_send_message,
                         rx.noop()
                     ),
                     class_name="flex-grow p-3 bg-white border border-[#7a7a7a] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 min-h-[60px] max-h-40 text-slate-800 placeholder-slate-400 text-sm",
@@ -90,11 +91,7 @@ def input_area() -> rx.Component:
                         style={"border_color": "#7a7a7a"},
                     ),
                     id="chat_file_upload",
-                    on_drop=ChatState.handle_upload(
-                        rx.upload_files(
-                            upload_id="chat_file_upload"
-                        )
-                    ),
+                    on_drop=ChatState.handle_upload,
                     class_name="flex-shrink-0",
                 ),
                 rx.el.button(
@@ -132,17 +129,7 @@ def input_area() -> rx.Component:
                         rx.icon("send-horizontal", size=20),
                     ),
                     type="submit",
-                    disabled=ChatState.processing
-                    | (
-                        ChatState.input_message.strip()
-                        == ""
-                        & ~ChatState.explain_active
-                        & ~ChatState.tasks_active
-                        & (
-                            ChatState.uploaded_file_name
-                            == ""
-                        )
-                    ),
+                    disabled=ChatState.processing,
                     class_name="p-2.5 bg-sky-500 text-white rounded-lg hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0 ml-auto",
                 ),
                 class_name="flex items-center gap-2 px-4 mt-2 mb-3",

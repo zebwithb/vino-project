@@ -35,11 +35,13 @@ async def handle_chat_request(
     # Use session_id from query parameter if provided, otherwise use the one in request body
     actual_session_id = session_id or request.session_id
     
+    # Step progression is now entirely LLM-driven through conversation
+    # The backend tracks and updates steps internally based on user confirmations
+    
     ai_response_content, updated_history, updated_current_step, planner_str = chat_service.process_query(
         session_id=actual_session_id,
         query_text=request.query_text,
         api_history_data=request.history,
-        current_step_override=request.current_step,
         selected_alignment=request.selected_alignment,
         explain_active=request.explain_active,
         tasks_active=request.tasks_active,
@@ -72,7 +74,6 @@ async def simple_chat(
         session_id=session_id,
         query_text=request.message,
         api_history_data=[],  # Empty history for simple mode
-        current_step_override=None,  # Use default step progression
         selected_alignment=None,
         explain_active=False,
         tasks_active=False,
