@@ -66,7 +66,7 @@ class ProcessingResult(BaseModel):
 class LLMResponse(BaseModel):
     """Defines the structured output we expect from the LLM."""
     response_text: str = Field(description="The conversational text to show to the user.")
-    next_step: Optional[Union[int, str]] = Field(None, description="The step number to advance to if the current step is complete. This should only be set when the current step's objectives are fully met.")
+    propose_next_step: Optional[int] = Field(None, description="If you believe the user is ready to advance, propose the next step number. Ask the user for confirmation in your response_text.")
 
 
 # --- API Request/Response Models ---

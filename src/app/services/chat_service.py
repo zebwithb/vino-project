@@ -297,7 +297,7 @@ class ChatService:
             })
 
             ai_response_content = llm_response.response_text
-            next_step_from_llm = llm_response.next_step
+            next_step_from_llm = llm_response.propose_next_step
             proposed_next_step = None
 
             # Update step based on LLM output
