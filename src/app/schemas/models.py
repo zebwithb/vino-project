@@ -65,7 +65,7 @@ class ProcessingResult(BaseModel):
 
 class LLMResponse(BaseModel):
     """Defines the structured output we expect from the LLM."""
-    response_text: str = Field(description="The conversational text to show to the user.")
+    response_text: str = Field(description="The conversational text in markdown format to show to the user.")
     propose_next_step: Optional[int] = Field(None, description="If you believe the user is ready to advance, propose the next step number. Ask the user for confirmation in your response_text.")
 
 
