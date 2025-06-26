@@ -25,6 +25,8 @@ class ChatState(rx.State):
     session_id: Optional[str] = None
     current_vino_step: int = 1
     current_planner_details: Optional[str] = None
+    proposed_next_step: Optional[int] = None
+    confirmation_in_progress: bool = False
 
     # New UI features state
     alignment_options: List[AlignmentOption] = [
@@ -188,6 +190,12 @@ class ChatState(rx.State):
         if not user_input and not (self.explain_active or self.tasks_active or self.uploaded_file_name):
             return
         
+        # If there's a pending step change proposal, and the user sends a new message,
+        # we treat it as an implicit rejection.
+        if self.proposed_next_step:
+            print(f"Frontend: Implicitly clearing step change proposal to {self.proposed_next_step} due to new user message.")
+            self.proposed_next_step = None
+        
         # Clear input immediately for better UX
         self.input_message = ""
         
@@ -249,8 +257,6 @@ class ChatState(rx.State):
         self.messages.append({"text": "", "is_ai": True}) # AI placeholder
         self.processing = True
         
-        # Scroll to bottom after adding messages
-        yield ChatState.scroll_to_bottom
         return ChatState.generate_response
 
     def _prepare_fastapi_history(self) -> List[Dict[str, Any]]:
@@ -303,33 +309,26 @@ class ChatState(rx.State):
                 response.raise_for_status()
                 response_data = response.json()
                 print(f"Frontend: Received response with step: {response_data.get('current_step', 'NOT_PROVIDED')}")
+                print(f"Frontend: Received response with proposed_next_step: {response_data.get('proposed_next_step', 'NOT_PROVIDED')}")
+
 
             async with self:
                 self.messages[-1]["text"] = response_data.get("response", "No response text.")
-                old_step = self.current_vino_step
                 
-                # Update step from backend response
-                current_step_from_backend = response_data.get("current_step", self.current_vino_step)
-                if current_step_from_backend != self.current_vino_step:
-                    self.current_vino_step = current_step_from_backend
-                    print(f"Frontend: Step updated from {old_step} to {self.current_vino_step}")
+                # New logic for two-stage step confirmation
+                proposed_step = response_data.get("proposed_next_step")
+                if proposed_step:
+                    self.proposed_next_step = proposed_step
+                    print(f"Frontend: Backend proposed step change to {proposed_step}. Awaiting confirmation.")
                 else:
-                    print(f"Frontend: Step unchanged at {self.current_vino_step}")
+                    # If no new step is proposed, clear any existing proposal
+                    if self.proposed_next_step:
+                        print(f"Frontend: Clearing previous step proposal ({self.proposed_next_step}) as none was received in this response.")
+                        self.proposed_next_step = None
                     
                 self.current_planner_details = response_data.get("planner_details", self.current_planner_details)
-                print(f"Frontend: Final frontend state - Step: {self.current_vino_step}")
-                # Backend response processed successfully
-                # For example, if a task generation completes, tasks_active might be set to False by the backend.
-                # self.explain_active = response_data.get("explain_active_status", self.explain_active)
-                # self.tasks_active = response_data.get("tasks_active_status", self.tasks_active)
+                print(f"Frontend: Final frontend state - Step: {self.current_vino_step}, Proposed Step: {self.proposed_next_step}")
                 
-            # Force navbar refresh if step changed
-            if old_step != self.current_vino_step:
-                yield ChatState.force_navbar_refresh
-                
-            # Scroll to bottom after AI response is complete
-            yield ChatState.scroll_to_bottom
-
         except httpx.HTTPStatusError as e:
             error_detail = e.response.text
             try:
@@ -340,15 +339,12 @@ class ChatState(rx.State):
                 pass 
             async with self:
                 self.messages[-1]["text"] = f"Error communicating with VINO API: {e.response.status_code} - {error_detail}"
-            yield ChatState.scroll_to_bottom
         except httpx.RequestError as e:
             async with self:
                 self.messages[-1]["text"] = f"Network error calling VINO API: {str(e)}"
-            yield ChatState.scroll_to_bottom
         except Exception as e:
             async with self:
                 self.messages[-1]["text"] = f"An unexpected error occurred: {str(e)}"
-            yield ChatState.scroll_to_bottom
         finally:
             async with self:
                 self.processing = False
@@ -358,22 +354,111 @@ class ChatState(rx.State):
                 # self.clear_uploaded_file() # Keep file context available for subsequent queries
 
     @rx.event
-    def scroll_to_bottom(self):
-        """Scroll the message container to the bottom"""
-        return rx.call_script(
-            """
-            // Function to scroll to bottom
-            function scrollToBottom() {
-                const messageContainer = document.getElementById('message-container');
-                if (messageContainer) {
-                    messageContainer.scrollTop = messageContainer.scrollHeight;
-                }
-            }
+    def decline_step_change(self):
+        """Decline the proposed step change."""
+        if not self.proposed_next_step:
+            return
+
+        print(f"Frontend: User declined step change to {self.proposed_next_step}.")
+        
+        # Add a message to the chat to indicate rejection
+        self.messages.append({
+            "text": f"[Continuing on current step. Step change to {self.proposed_next_step} declined.]",
+            "is_ai": False
+        })
+        
+        self.proposed_next_step = None
+
+    @rx.event(background=True)
+    async def confirm_step_change(self):
+        """Confirm the proposed step change and notify the backend."""
+        if not self.proposed_next_step or self.confirmation_in_progress:
+            return
+
+        async with self:
+            if not self.proposed_next_step: # Double check after acquiring lock
+                return
+            self.confirmation_in_progress = True
+            self.processing = True
             
-            // Try multiple times with increasing delays to ensure DOM is ready
-            scrollToBottom(); // Immediate
-            setTimeout(scrollToBottom, 50);  // After 50ms
-            setTimeout(scrollToBottom, 200); // After 200ms
-            setTimeout(scrollToBottom, 500); // After 500ms to be really sure
-            """
-        )
+            confirmed_step = self.proposed_next_step
+            
+            # Add a message to the chat to indicate confirmation
+            self.messages.append({
+                "text": f"OK, let's move to step {confirmed_step}.",
+                "is_ai": False
+            })
+            self.messages.append({"text": "", "is_ai": True}) # AI placeholder
+
+            # Clear the proposal now that we are acting on it
+            self.proposed_next_step = None
+
+        # Prepare payload for backend
+        payload = {
+            "session_id": self.session_id,
+            "query_text": f"User confirmed moving to step {confirmed_step}.",
+            "history": self._prepare_fastapi_history(),
+            "current_step": self.current_vino_step,
+            "confirmed_next_step": confirmed_step,
+            "planner_details": self.current_planner_details,
+            "selected_alignment": self.selected_alignment,
+            "explain_active": False,
+            "tasks_active": False,
+            "uploaded_file_context_name": None,
+        }
+        
+        params = {"session_id": self.session_id}
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{FASTAPI_BASE_URL}/v1/chat",
+                    json=payload,
+                    params=params,
+                    timeout=120.0
+                )
+                response.raise_for_status()
+                response_data = response.json()
+
+            async with self:
+                self.messages[-1]["text"] = response_data.get("response", "Step change confirmed.")
+                
+                old_step = self.current_vino_step
+                
+                current_step_from_backend = response_data.get("current_step", self.current_vino_step)
+                if current_step_from_backend != self.current_vino_step:
+                    self.current_vino_step = current_step_from_backend
+                    print(f"Frontend: Step updated from {old_step} to {self.current_vino_step} after confirmation.")
+                else:
+                    print(f"Frontend: Step unchanged at {self.current_vino_step} even after confirmation.")
+                
+                self.current_planner_details = response_data.get("planner_details", self.current_planner_details)
+                print(f"Frontend: Final frontend state - Step: {self.current_vino_step}")
+
+            if old_step != self.current_vino_step:
+                yield ChatState.force_navbar_refresh
+
+        except httpx.HTTPStatusError as e:
+            error_detail = e.response.text
+            try:
+                error_json = e.response.json()
+                if "detail" in error_json:
+                    error_detail = error_json["detail"]
+            except ValueError:
+                pass 
+            async with self:
+                self.messages[-1]["text"] = f"Error confirming step change: {e.response.status_code} - {error_detail}"
+        except httpx.RequestError as e:
+            async with self:
+                self.messages[-1]["text"] = f"Network error confirming step change: {str(e)}"
+        except Exception as e:
+            async with self:
+                self.messages[-1]["text"] = f"An unexpected error occurred during step confirmation: {str(e)}"
+        finally:
+            async with self:
+                self.processing = False
+                self.confirmation_in_progress = False
+
+    @rx.event
+    def scroll_to_bottom(self):
+        """This event handler is kept to prevent errors but does not perform any action."""

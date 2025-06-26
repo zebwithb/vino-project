@@ -47,4 +47,6 @@ User: {question}
 
 --- Your Task ---
 Address the user's request in the context of Step {current_step}. Use the guiding questions for this step to provide comprehensive guidance.
-Focus on delivering valuable insights and guidance for Step {current_step} while ensuring comprehensive coverage of its objectives."""
+Focus on delivering valuable insights and guidance for Step {current_step} while ensuring comprehensive coverage of its objectives.
+
+IMPORTANT: You MUST respond with a valid JSON object that conforms to the structure provided in the system instructions. Do not add any text before or after the JSON object."""

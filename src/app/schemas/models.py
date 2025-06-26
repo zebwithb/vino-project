@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from pydantic import BaseModel, Field
 from enum import Enum
 
@@ -66,7 +66,7 @@ class ProcessingResult(BaseModel):
 class LLMResponse(BaseModel):
     """Defines the structured output we expect from the LLM."""
     response_text: str = Field(description="The conversational text to show to the user.")
-    next_step: Optional[int] = Field(None, description="The step number to advance to if the current step is complete. This should only be set when the current step's objectives are fully met.")
+    next_step: Optional[Union[int, str]] = Field(None, description="The step number to advance to if the current step is complete. This should only be set when the current step's objectives are fully met.")
 
 
 # --- API Request/Response Models ---
@@ -84,6 +84,7 @@ class QueryRequest(BaseModel): # This is your primary ChatRequest
     explain_active: Optional[bool] = False
     tasks_active: Optional[bool] = False
     uploaded_file_context_name: Optional[str] = None
+    confirmed_next_step: Optional[int] = None
 
 class QueryResponse(BaseModel): # This is your primary ChatResponse
     """Response model for the main chat/query endpoint."""
@@ -91,6 +92,7 @@ class QueryResponse(BaseModel): # This is your primary ChatResponse
     current_step: int
     # history: List[Dict[str, Any]] 
     planner_details: Optional[str] = None # Or Dict[str, Any] if structured
+    proposed_next_step: Optional[int] = None
 
 class UploadResponse(BaseModel): # For file upload operations
     """Response model for file upload operations."""

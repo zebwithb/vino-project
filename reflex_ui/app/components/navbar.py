@@ -72,12 +72,13 @@ def navbar_link(
             alt_text=alt_text,
             height=inactive_height,
             width=inactive_max_width,
+            padding="0.2vh",
         )
         
         # Create the inactive SVG image
         inactive_svg_image = rx.image(**base_image_props)
         
-        active_height = "1.5vh" if step_number == 1 else "7vh"
+        active_height = "1.5vh" if step_number == 1 else "6vh"
         active_width = "10vh" if step_number in [2, 3] else "15vh"
         active_image_props = get_common_image_props(
             src=default_image_src,
@@ -108,7 +109,7 @@ def navbar_link(
                     box_shadow="0 2px 8px rgba(0, 0, 0, 0.1)",
                     border="1px solid #7a7a7a",
                     width="100%",
-                    height="7vh",
+                    height="8vh",
                     display="flex",
                     align_items="center",
                     justify_content="center",

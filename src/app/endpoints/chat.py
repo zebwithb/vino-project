@@ -38,20 +38,22 @@ async def handle_chat_request(
     # Step progression is now entirely LLM-driven through conversation
     # The backend tracks and updates steps internally based on user confirmations
     
-    ai_response_content, updated_history, updated_current_step, planner_str = chat_service.process_query(
+    ai_response_content, updated_history, updated_current_step, planner_str, proposed_next_step = chat_service.process_query(
         session_id=actual_session_id,
         query_text=request.query_text,
         api_history_data=request.history,
         selected_alignment=request.selected_alignment,
         explain_active=request.explain_active,
         tasks_active=request.tasks_active,
-        uploaded_file_context_name=request.uploaded_file_context_name
+        uploaded_file_context_name=request.uploaded_file_context_name,
+        confirmed_next_step=request.confirmed_next_step
     )
     
     return ChatResponse(
         response=ai_response_content,
         current_step=updated_current_step,
-        planner_details=planner_str
+        planner_details=planner_str,
+        proposed_next_step=proposed_next_step
     )
 
 @router.post("/simple", response_model=SimpleChatResponse)
@@ -70,14 +72,15 @@ async def simple_chat(
     session_id = request.session_id or str(uuid.uuid4())
     
     # Call the full chat service with sensible defaults
-    ai_response_content, _, _, _ = chat_service.process_query(
+    ai_response_content, _, _, _, _ = chat_service.process_query(
         session_id=session_id,
         query_text=request.message,
         api_history_data=[],  # Empty history for simple mode
         selected_alignment=None,
         explain_active=False,
         tasks_active=False,
-        uploaded_file_context_name=request.file_context
+        uploaded_file_context_name=request.file_context,
+        confirmed_next_step=None # Simple chat doesn't use step confirmation
     )
     
     return SimpleChatResponse(

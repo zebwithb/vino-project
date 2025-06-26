@@ -2,6 +2,41 @@ import reflex as rx
 from app.states.chat_state import ChatState, AlignmentOption
 
 
+def step_change_confirmation_dialog() -> rx.Component:
+    """A dialog to confirm or decline a proposed step change."""
+    return rx.cond(
+        ChatState.proposed_next_step,
+        rx.el.div(
+            rx.el.div(
+                rx.el.div(
+                    rx.text(
+                        "Vino suggests moving to step ",
+                        rx.text.strong(ChatState.proposed_next_step),
+                        ". Do you want to proceed?",
+                        class_name="text-sm font-medium text-slate-700",
+                    ),
+                ),
+                rx.el.div(
+                    rx.el.button(
+                        "Decline",
+                        on_click=ChatState.decline_step_change,
+                        class_name="px-3 py-1 text-xs font-semibold text-slate-600 bg-white border rounded-md hover:bg-slate-50 transition-colors",
+                        style={"border_color": "#cbd5e1"},  # slate-300
+                    ),
+                    rx.el.button(
+                        "Confirm",
+                        on_click=ChatState.confirm_step_change,
+                        class_name="px-3 py-1 text-xs font-semibold text-white bg-sky-500 border border-sky-500 rounded-md hover:bg-sky-600 transition-colors",
+                    ),
+                    class_name="flex items-center gap-2",
+                ),
+                class_name="flex items-center justify-between p-3 bg-sky-100 border border-sky-200 rounded-lg",
+            ),
+            class_name="px-4 pb-2",
+        ),
+    )
+
+
 def alignment_radio_option(
     option: AlignmentOption,
 ) -> rx.Component:
@@ -65,6 +100,7 @@ def input_area() -> rx.Component:
             ),
             class_name="flex justify-between items-center mb-3 px-4 pt-3",
         ),
+        step_change_confirmation_dialog(),
         rx.el.form(              
             rx.el.div(                rx.el.textarea(
                     id="message-input-chat",

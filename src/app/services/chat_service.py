@@ -184,9 +184,18 @@ class ChatService:
         selected_alignment: Optional[str] = None,
         explain_active: Optional[bool] = False,
         tasks_active: Optional[bool] = False,
-        uploaded_file_context_name: Optional[str] = None
-    ) -> Tuple[str, List[Dict[str, Any]], int, Optional[str]]:
+        uploaded_file_context_name: Optional[str] = None,
+        confirmed_next_step: Optional[int] = None
+    ) -> Tuple[str, List[Dict[str, Any]], int, Optional[str], Optional[int]]:
         history, current_step, planner = self._get_session_data(session_id)
+
+        if confirmed_next_step is not None and 1 <= confirmed_next_step <= 6:
+            if confirmed_next_step != current_step:
+                logger.info(f"Session {session_id} - User confirmed move from step {current_step} to {confirmed_next_step}.")
+                current_step = confirmed_next_step
+                self._update_session_data(session_id, history, current_step, planner)
+            else:
+                logger.info(f"Session {session_id} - User confirmed staying on step {current_step}.")
         
         logger.info(f"Session {session_id} - Using stored step: {current_step}")
         # Handle uploaded file context
@@ -289,12 +298,13 @@ class ChatService:
 
             ai_response_content = llm_response.response_text
             next_step_from_llm = llm_response.next_step
+            proposed_next_step = None
 
             # Update step based on LLM output
-            if next_step_from_llm is not None and 1 <= next_step_from_llm <= 6:
+            if next_step_from_llm is not None and isinstance(next_step_from_llm, int) and 1 <= next_step_from_llm <= 6:
                 if next_step_from_llm != current_step:
-                    logger.info(f"Session {session_id} - LLM advised moving from step {current_step} to {next_step_from_llm}.")
-                    current_step = next_step_from_llm
+                    logger.info(f"Session {session_id} - LLM proposed moving from step {current_step} to {next_step_from_llm}.")
+                    proposed_next_step = next_step_from_llm
                 else:
                     logger.info(f"Session {session_id} - LLM advised staying on step {current_step}.")
             else:
@@ -311,7 +321,7 @@ class ChatService:
             
             # Ensure we return a string
             final_content = str(ai_response_content)
-            return final_content, self._convert_langchain_history_to_api(history), current_step, planner
+            return final_content, self._convert_langchain_history_to_api(history), current_step, planner, proposed_next_step
         
         except Exception as e:
             logger.error(f"Error during LLM chain invocation for session '{session_id}': {e}", exc_info=True)
