@@ -969,7 +969,7 @@ To add new documents to the Knowledge Bank:
 3. The script will process and upload documents to both ChromaDB and Supabase, then move processed files to `data/kb/`.
 4. Check the terminal output for upload status and errors.
 
-For detailed requirements, document structure, and troubleshooting, see [Document Upload Guide](docs/upload-docs.md).
+For detailed requirements, document structure, and troubleshooting, see [Document Upload Guide](file_upload/upload-docs.md).
 
 
 
