@@ -2,10 +2,19 @@ Upload Documents to Storage
 ===
 
 # Table of Contents
-
-- [Adding new documents to the Knowledge Bank](#adding-new-documents-to-the-knowledge-bank)
+- [Upload Documents to Storage](#upload-documents-to-storage)
 - [Table of Contents](#table-of-contents)
 - [Introduction](#introduction)
+- [Document Requirements](#document-requirements)
+  - [Document Structure](#document-structure)
+  - [Content Guidelines](#content-guidelines)
+  - [Quality Checklist](#quality-checklist)
+  - [Why Markdown?](#why-markdown)
+- [Document Processing Steps](#document-processing-steps)
+  - [Step-by-Step Guide for Adding Documents](#step-by-step-guide-for-adding-documents)
+  - [File Organization](#file-organization)
+  - [Check Upload](#check-upload)
+
 
 
 # Introduction
