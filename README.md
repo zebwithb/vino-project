@@ -224,6 +224,8 @@ Make sure the ENVIRONMENT VARIABLES are set up correctly for terminal/CLI use.
    ```
 
 2. **Set up environment variables**
+   
+   For a comprehensive guide on Supabase setup, see [Supabase Project Setup](https://github.com/zebwithb/vino-project/wiki/Supabase-Project-Setup)
 
    Create a `.env` file in the project root:
 
@@ -244,24 +246,50 @@ Make sure the ENVIRONMENT VARIABLES are set up correctly for terminal/CLI use.
    CHUNKING_DEBUG=false
    ```
 
-3. **Set up Supabase Database (OPTIONAL)**
+3. **Set up Supabase Database**
 
-   Run the session storage migration in your Supabase SQL editor:
+   Create the necessary tables in your Supabase project by opening the SQL editor and running the following commands:
 
    ```sql
-   CREATE TABLE IF NOT EXISTS chat_sessions (
-       id SERIAL PRIMARY KEY,
-       session_id VARCHAR(255) UNIQUE NOT NULL,
-       conversation_history JSONB DEFAULT '[]'::jsonb,
-       current_step INTEGER DEFAULT 1,
-       planner_details TEXT,
-       created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-       updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-       last_accessed TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-   );
-   
-   CREATE INDEX IF NOT EXISTS idx_chat_sessions_session_id ON chat_sessions(session_id);
-   CREATE INDEX IF NOT EXISTS idx_chat_sessions_last_accessed ON chat_sessions(last_accessed);
+   -- Create the largeobject_oid_seq sequence
+   CREATE SEQUENCE public.largeobject_oid_seq
+      INCREMENT 1
+      START 1
+      MINVALUE 1
+      MAXVALUE 9223372036854775807 -- Max value for bigint
+      CACHE 1;
+
+   -- Create the largeobject table
+   CREATE TABLE public.largeobject (
+      oid bigint NOT NULL DEFAULT nextval('largeobject_oid_seq'::regclass),
+      plain_text text NULL,
+      CONSTRAINT largeobject_pkey PRIMARY KEY (oid)
+   ) TABLESPACE pg_default;
+
+   -- Create the filemetadata_id_seq sequence
+   CREATE SEQUENCE public.filemetadata_id_seq
+      INCREMENT 1
+      START 1
+      MINVALUE 1
+      MAXVALUE 9223372036854775807 -- Max value for bigint
+      CACHE 1;
+
+   -- Create the filemetadata table
+   CREATE TABLE public.filemetadata (
+      id bigint NOT NULL DEFAULT nextval('filemetadata_id_seq'::regclass),
+      file_name text NULL,
+      file_size bigint NULL,
+      file_type text NULL,
+      page_count smallint NULL,
+      word_count integer NULL,
+      char_count integer NULL,
+      keywords text[] NULL,
+      source text NULL,
+      abstract text NULL,
+      large_object_oid bigint NULL,
+      CONSTRAINT filemetadata_pkey PRIMARY KEY (id),
+      CONSTRAINT fk_large_object FOREIGN KEY (large_object_oid) REFERENCES largeobject(oid) ON UPDATE CASCADE ON DELETE CASCADE
+   ) TABLESPACE pg_default;
    ```
 
 ### Running the Application
@@ -954,22 +982,22 @@ For questions, issues, or contributions:
 
 ---
 
-# Uploading Documents for Context
+# Document Processing and Upload Guide
 
-For Supabase table and storage setup instructions, see [Supabase Setup Guide](https://github.com/zebwithb/vino-project/wiki/Supabase-Project-Setup). Supabase is used for persistent session storage and document metadata management and must be configured before uploading documents.
+   For Supabase table and storage setup instructions, see [Supabase Setup Guide](https://github.com/zebwithb/vino-project/wiki/Supabase-Project-Setup). Supabase is used for persistent session storage and document metadata management and must be configured before uploading documents.
 
-To add new documents to the Knowledge Bank:
+   For developers, to permanently add new documents to the Knowledge Bank:
 
-1. Place your `.md`, `.txt`, `.pdf`, or `.docx` file in the `data/kb_new/` directory.
-2. Run the following command from the project root:
+   1. Place your `.md`, `.txt`, `.pdf`, or `.docx` file in the `data/kb_new/` directory.
+   2. Run the following command from the project root:
 
-   ```bash
-   uv run python -m file_upload.file_processor --default
-   ```
-3. The script will process and upload documents to both ChromaDB and Supabase, then move processed files to `data/kb/`.
-4. Check the terminal output for upload status and errors.
+      ```bash
+      uv run python -m file_upload.file_processor --default
+      ```
+   3. The script will process and upload documents to both ChromaDB and Supabase, then move processed files to `data/kb/`.
+   4. Check the terminal output for upload status and errors.
 
-For detailed requirements, document structure, and troubleshooting, see [Document Upload Guide](https://github.com/zebwithb/vino-project/wiki/Document-Processing-Guide).
+   For detailed requirements, document structure, and troubleshooting, see [Document Upload Guide](https://github.com/zebwithb/vino-project/wiki/Document-Processing-Guide).
 ***
 
 **Built with passion using FastAPI, ChromaDB, Google Generative AI, and Supabase**
