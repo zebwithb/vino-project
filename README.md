@@ -956,7 +956,7 @@ For questions, issues, or contributions:
 
 # Uploading Documents for Context
 
-For Supabase table and storage setup instructions, see [Supabase Setup Guide](file_upload/supabase-setup.md). Supabase is used for persistent session storage and document metadata management and must be configured before uploading documents.
+For Supabase table and storage setup instructions, see [Supabase Setup Guide](https://github.com/zebwithb/vino-project/wiki/Supabase-Project-Setup). Supabase is used for persistent session storage and document metadata management and must be configured before uploading documents.
 
 To add new documents to the Knowledge Bank:
 
@@ -969,8 +969,7 @@ To add new documents to the Knowledge Bank:
 3. The script will process and upload documents to both ChromaDB and Supabase, then move processed files to `data/kb/`.
 4. Check the terminal output for upload status and errors.
 
-For detailed requirements, document structure, and troubleshooting, see [Document Upload Guide](file_upload/upload-docs.md).
-
-
+For detailed requirements, document structure, and troubleshooting, see [Document Upload Guide](https://github.com/zebwithb/vino-project/wiki/Document-Processing-Guide).
+***
 
 **Built with passion using FastAPI, ChromaDB, Google Generative AI, and Supabase**
